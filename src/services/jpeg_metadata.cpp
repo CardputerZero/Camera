@@ -185,7 +185,7 @@ std::vector<uint8_t> build_exif_app1(const ExifMetadata& metadata) {
       rational_entry(0x011A, 72, 1),
       rational_entry(0x011B, 72, 1),
       short_entry(0x0128, 2),
-      ascii_entry(0x0131, metadata.software.empty() ? "Camera 0.3.6" : metadata.software),
+      ascii_entry(0x0131, metadata.software.empty() ? "Camera 0.3.7" : metadata.software),
       long_entry(0x8769, 0),
   };
 

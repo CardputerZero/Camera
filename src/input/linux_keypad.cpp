@@ -270,14 +270,14 @@ void LinuxKeypad::push_key_event_(uint16_t code, int32_t value) {
     action_callback_(app::AppAction::OpenGallery);
   } else if (key == '8') {
     action_callback_(app::AppAction::ToggleCaptureMode);
-  } else if (key == 'x' || key == 'X' || key == LV_KEY_UP) {
-    action_callback_(app::AppAction::PanDown);
-  } else if (key == 'f' || key == 'F' || key == LV_KEY_DOWN) {
+  } else if (key == 'f' || key == 'F' || key == LV_KEY_UP) {
     action_callback_(app::AppAction::PanUp);
-  } else if (key == 'c' || key == 'C' || key == LV_KEY_LEFT) {
-    action_callback_(app::AppAction::PanRight);
-  } else if (key == 'z' || key == 'Z' || key == LV_KEY_RIGHT) {
+  } else if (key == 'x' || key == 'X' || key == LV_KEY_DOWN) {
+    action_callback_(app::AppAction::PanDown);
+  } else if (key == 'z' || key == 'Z' || key == LV_KEY_LEFT) {
     action_callback_(app::AppAction::PanLeft);
+  } else if (key == 'c' || key == 'C' || key == LV_KEY_RIGHT) {
+    action_callback_(app::AppAction::PanRight);
   }
 }
 

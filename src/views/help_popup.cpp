@@ -12,6 +12,15 @@ namespace {
 using Font      = ui::font::AppFont;
 namespace color = ui::color;
 
+constexpr int32_t kContentWidth  = 278;
+constexpr int32_t kContentHeight = 100;
+constexpr int32_t kScrollStep    = 26;
+
+constexpr const char* kHelpIntro =
+    "Take and view photos using the built-in camera or supported external USB cameras.\n\n"
+    "Due to the size limitations of the built-in display, captured photos may have better "
+    "image quality than they appear in the preview.";
+
 struct HelpRow {
   const char* key;
   const char* action;
@@ -54,6 +63,10 @@ void HelpPopup::show(app::AppState page) {
   }
 
   update_rows_(page);
+  lv_obj_scroll_to_y(content_, 0, LV_ANIM_OFF);
+#if LV_USE_SYSMON && LV_USE_PERF_MONITOR
+  lv_sysmon_hide_performance(lv_obj_get_display(backdrop_));
+#endif
   lv_obj_move_foreground(backdrop_);
   lv_obj_remove_flag(backdrop_, LV_OBJ_FLAG_HIDDEN);
 }
@@ -61,11 +74,21 @@ void HelpPopup::show(app::AppState page) {
 void HelpPopup::hide() {
   if (backdrop_ && lv_obj_is_valid(backdrop_)) {
     lv_obj_add_flag(backdrop_, LV_OBJ_FLAG_HIDDEN);
+#if LV_USE_SYSMON && LV_USE_PERF_MONITOR
+    lv_sysmon_show_performance(lv_obj_get_display(backdrop_));
+#endif
   }
 }
 
 bool HelpPopup::visible() const {
   return backdrop_ && lv_obj_is_valid(backdrop_) && !lv_obj_has_flag(backdrop_, LV_OBJ_FLAG_HIDDEN);
+}
+
+void HelpPopup::scroll(int32_t direction) {
+  if (!content_ || direction == 0) {
+    return;
+  }
+  lv_obj_scroll_by_bounded(content_, 0, -direction * kScrollStep, LV_ANIM_ON);
 }
 
 void HelpPopup::build_(lv_obj_t* parent) {
@@ -116,15 +139,41 @@ void HelpPopup::build_(lv_obj_t* parent) {
   lv_obj_set_style_bg_opa(separator, LV_OPA_70, 0);
   lv_obj_align(separator, LV_ALIGN_TOP_MID, 0, 29);
 
-  lv_obj_t* rows = lv_obj_create(panel_);
-  style_plain_container(rows);
-  lv_obj_set_size(rows, 278, 100);
-  lv_obj_set_flex_flow(rows, LV_FLEX_FLOW_COLUMN);
-  lv_obj_set_flex_align(rows, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
-  lv_obj_align(rows, LV_ALIGN_TOP_MID, 0, 34);
+  content_ = lv_obj_create(panel_);
+  style_plain_container(content_);
+  lv_obj_set_size(content_, kContentWidth, kContentHeight);
+  lv_obj_add_flag(content_, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_clear_flag(
+      content_,
+      static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
+                                 LV_OBJ_FLAG_SCROLL_CHAIN));
+  lv_obj_set_scroll_dir(content_, LV_DIR_VER);
+  lv_obj_set_scrollbar_mode(content_, LV_SCROLLBAR_MODE_AUTO);
+  lv_obj_set_style_width(content_, 2, LV_PART_SCROLLBAR);
+  lv_obj_set_style_bg_color(content_, lv_color_hex(color::DARK_PRIMARY), LV_PART_SCROLLBAR);
+  lv_obj_set_style_bg_opa(content_, LV_OPA_70, LV_PART_SCROLLBAR);
+  lv_obj_set_style_radius(content_, 1, LV_PART_SCROLLBAR);
+  lv_obj_set_flex_flow(content_, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(content_, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+  lv_obj_set_style_pad_row(content_, 6, 0);
+  lv_obj_align(content_, LV_ALIGN_TOP_MID, 0, 34);
+
+  lv_obj_t* intro = lv_label_create(content_);
+  lv_obj_set_width(intro, 270);
+  lv_obj_set_style_text_font(intro, Font::standard_regular(12), 0);
+  lv_obj_set_style_text_color(intro, lv_color_hex(color::DARK_ONSURFACEVARIANT), 0);
+  lv_label_set_long_mode(intro, LV_LABEL_LONG_WRAP);
+  lv_label_set_text(intro, kHelpIntro);
+
+  lv_obj_t* operations = lv_label_create(content_);
+  lv_obj_set_width(operations, 270);
+  lv_obj_set_style_text_font(operations, Font::standard_medium(12), 0);
+  lv_obj_set_style_text_color(operations, lv_color_hex(color::DARK_ONSURFACE), 0);
+  lv_label_set_long_mode(operations, LV_LABEL_LONG_WRAP);
+  lv_label_set_text(operations, "Number keys 4-8: operations");
 
   for (auto& widgets : rows_) {
-    widgets.row = lv_obj_create(rows);
+    widgets.row = lv_obj_create(content_);
     style_plain_container(widgets.row);
     lv_obj_set_size(widgets.row, LV_PCT(100), 14);
 
@@ -170,6 +219,7 @@ void HelpPopup::destroy_() {
   backdrop_   = nullptr;
   panel_      = nullptr;
   page_badge_ = nullptr;
+  content_    = nullptr;
   rows_       = {};
 }
 

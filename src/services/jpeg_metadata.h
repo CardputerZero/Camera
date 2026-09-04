@@ -10,7 +10,7 @@ namespace service::camera_backend {
 struct ExifMetadata {
   std::string make{"M5Stack"};
   std::string model{"CardputerZero IMX219"};
-  std::string software{"Camera 0.3.6"};
+  std::string software{"Camera 0.3.7"};
   std::string date_time_original;
   std::string user_comment;
   int width{0};

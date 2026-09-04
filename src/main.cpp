@@ -376,6 +376,8 @@ int main() {
             if (services && services->audio) {
               services->audio->play_click();
             }
+          } else if (action == app::AppAction::PanUp || action == app::AppAction::PanDown) {
+            help_popup->scroll(action == app::AppAction::PanUp ? -1 : 1);
           }
           return;
         }

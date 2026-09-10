@@ -24,6 +24,7 @@ class HelpPopup {
   void show(app::AppState page);
   void hide();
   bool visible() const;
+  void scroll(int32_t direction);
 
  private:
   struct RowWidgets {
@@ -40,6 +41,7 @@ class HelpPopup {
   lv_obj_t* backdrop_{nullptr};
   lv_obj_t* panel_{nullptr};
   lv_obj_t* page_badge_{nullptr};
+  lv_obj_t* content_{nullptr};
   std::array<RowWidgets, 7> rows_{};
 };
 

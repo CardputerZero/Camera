@@ -137,7 +137,7 @@ cmake --preset cp0-cross -DAPP_USE_DRM=ON
 可以通过 `CAMERA_APP_VERSION` 覆盖包版本，无需修改 `CMakeLists.txt`：
 
 ```bash
-./package_deb.sh -DCAMERA_APP_VERSION=0.3.6
+./package_deb.sh -DCAMERA_APP_VERSION=0.3.7
 ```
 
 推送到 `main` 后，`.github/workflows/release.yml` 会读取最新 GitHub Release，将补丁版本号
@@ -154,7 +154,7 @@ cd /path/to/debian_workspace/projects/CameraApp
 默认输出：
 
 ```text
-dist/Camera_0.3.6_m5stack1_arm64.deb
+dist/Camera_0.3.7_m5stack1_arm64.deb
 ```
 
 可选参数：
@@ -167,7 +167,7 @@ dist/Camera_0.3.6_m5stack1_arm64.deb
 检查包内容：
 
 ```bash
-dpkg-deb -c dist/Camera_0.3.6_m5stack1_arm64.deb
+dpkg-deb -c dist/Camera_0.3.7_m5stack1_arm64.deb
 ```
 
 至少应包含这些路径：
@@ -185,14 +185,14 @@ dpkg-deb -c dist/Camera_0.3.6_m5stack1_arm64.deb
 在目标板安装：
 
 ```bash
-sudo apt install ./dist/Camera_0.3.6_m5stack1_arm64.deb
+sudo apt install ./dist/Camera_0.3.7_m5stack1_arm64.deb
 ```
 
 或者复制到目标板后安装：
 
 ```bash
-scp dist/Camera_0.3.6_m5stack1_arm64.deb pi@pi:~/
-ssh pi@pi 'sudo apt install ./Camera_0.3.6_m5stack1_arm64.deb'
+scp dist/Camera_0.3.7_m5stack1_arm64.deb pi@pi:~/
+ssh pi@pi 'sudo apt install ./Camera_0.3.7_m5stack1_arm64.deb'
 ```
 
 ## 安装后的资源路径

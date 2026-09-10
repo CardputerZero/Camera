@@ -1286,10 +1286,13 @@ struct LibcameraBackend::Impl {
     crop_w = std::min(crop_w, full.width);
     crop_h = std::min(crop_h, full.height);
 
-    const int max_x  = static_cast<int>(full.width - crop_w);
-    const int max_y  = static_cast<int>(full.height - crop_h);
-    const int crop_x = full.x + max_x * clamp_int(state.view_x_percent, 0, 100) / 100;
-    const int crop_y = full.y + max_y * clamp_int(state.view_y_percent, 0, 100) / 100;
+    // ScalerCrop uses the unrotated sensor axes; the navigator follows the Rotate180 preview.
+    const int max_x         = static_cast<int>(full.width - crop_w);
+    const int max_y         = static_cast<int>(full.height - crop_h);
+    const int sensor_view_x = 100 - clamp_int(state.view_x_percent, 0, 100);
+    const int sensor_view_y = 100 - clamp_int(state.view_y_percent, 0, 100);
+    const int crop_x        = full.x + max_x * sensor_view_x / 100;
+    const int crop_y        = full.y + max_y * sensor_view_y / 100;
     return {crop_x, crop_y, crop_w, crop_h};
   }
 
@@ -1327,7 +1330,7 @@ struct LibcameraBackend::Impl {
   ExifMetadata build_still_exif_metadata(const libcamera::Request* request, int width, int height) {
     ExifMetadata metadata         = make_default_exif_metadata(width, height);
     metadata.model                = "CardputerZero IMX219";
-    metadata.software             = "Camera 0.3.6";
+    metadata.software             = "Camera 0.3.7";
     metadata.f_number_x100        = 200;
     metadata.focal_length_mm_x100 = 285;
     metadata.lens_make            = "M5Stack";

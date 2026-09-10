@@ -93,7 +93,7 @@ cmake --preset cp0-cross -DAPP_USE_DRM=ON
 `CAMERA_APP_VERSION` can override the package version without editing `CMakeLists.txt`:
 
 ```bash
-./package_deb.sh -DCAMERA_APP_VERSION=0.3.6
+./package_deb.sh -DCAMERA_APP_VERSION=0.3.7
 ```
 
 Pushes to `main` run `.github/workflows/release.yml`, increment the patch component of the latest
@@ -107,7 +107,7 @@ also be run manually with an explicit `MAJOR.MINOR.PATCH` version.
 Default output:
 
 ```text
-dist/Camera_0.3.6_m5stack1_arm64.deb
+dist/Camera_0.3.7_m5stack1_arm64.deb
 ```
 
 Useful overrides:

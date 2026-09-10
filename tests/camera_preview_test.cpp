@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2026 M5Stack Technology CO LTD
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
 // libjpeg's public header expects size_t and FILE to be declared first.
 // clang-format off
 #include <cstddef>

@@ -79,11 +79,12 @@ void SdlKeypad::poll() {
     zoom_out_hold_fired_ = true;
   } else if (!zoom_out_pressed && zoom_out_pressed_ && !zoom_out_hold_fired_) {
     dispatch_(app::AppAction::CancelQuitHold);
-    dispatch_(app::AppAction::ZoomOut);
+    dispatch_(app::AppAction::Exit);
   }
 
   if (!esc_pressed && esc_pressed_ && !esc_hold_fired_) {
     dispatch_(app::AppAction::CancelQuitHold);
+    dispatch_(app::AppAction::Exit);
   }
 
   if (zoom_in_pressed && !zoom_in_pressed_) {

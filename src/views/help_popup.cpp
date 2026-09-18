@@ -33,7 +33,7 @@ struct HelpRow {
 };
 
 constexpr std::array<HelpRow, 7> kCameraRows{{
-    {"4", "Back (hold to exit)"},
+    {"ESC / 4", "Hold to exit"},
     {"5 / 7", "Zoom out / in"},
     {"6 / ENTER", "Take photo"},
     {"8", "Open gallery"},
@@ -43,13 +43,13 @@ constexpr std::array<HelpRow, 7> kCameraRows{{
 }};
 
 constexpr std::array<HelpRow, 7> kGalleryRows{{
-    {"4", "Back (hold to exit)"},
+    {"ESC / 4", "Back to camera"},
     {"5 / 7", "Previous / next"},
     {"6", "Photo info"},
     {"8", "Delete photo"},
     {"Z / C", "Previous / next"},
     {"F / X", "Scroll info up / down"},
-    {"ESC / ENTER", "Back / confirm"},
+    {"ENTER", "Confirm"},
 }};
 
 void style_plain_container(lv_obj_t* obj) {

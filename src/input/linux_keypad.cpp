@@ -284,6 +284,7 @@ void LinuxKeypad::push_key_event_(uint16_t code, int32_t value) {
       esc_held_ = false;
       if (!esc_hold_fired_ && action_callback_) {
         action_callback_(app::AppAction::CancelQuitHold);
+        action_callback_(app::AppAction::Exit);
       }
     }
   } else if (key == '4') {
@@ -298,7 +299,7 @@ void LinuxKeypad::push_key_event_(uint16_t code, int32_t value) {
       zoom_out_held_ = false;
       if (!zoom_out_hold_fired_ && action_callback_) {
         action_callback_(app::AppAction::CancelQuitHold);
-        action_callback_(app::AppAction::ZoomOut);
+        action_callback_(app::AppAction::Exit);
       }
     }
   }

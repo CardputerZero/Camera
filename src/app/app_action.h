@@ -11,6 +11,9 @@ namespace app {
 enum class AppAction {
   None,
   Exit,
+  Quit,
+  BeginQuitHold,
+  CancelQuitHold,
   ToggleHint,
   Capture,
   Confirm,

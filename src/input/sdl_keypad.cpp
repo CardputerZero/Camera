@@ -8,6 +8,10 @@
 
 namespace input {
 
+namespace {
+constexpr uint32_t kLongPressMs = 1000;
+}
+
 void SdlKeypad::set_action_callback(ActionCallback callback) {
   action_callback_ = std::move(callback);
 }
@@ -35,8 +39,14 @@ void SdlKeypad::poll() {
   const bool pan_left_pressed       = state[SDL_SCANCODE_Z] != 0 || state[SDL_SCANCODE_LEFT] != 0;
   const bool pan_right_pressed      = state[SDL_SCANCODE_C] != 0 || state[SDL_SCANCODE_RIGHT] != 0;
 
+  const uint32_t now = SDL_GetTicks();
   if (esc_pressed && !esc_pressed_) {
-    dispatch_(app::AppAction::Exit);
+    esc_pressed_at_ = now;
+    esc_hold_fired_ = false;
+    dispatch_(app::AppAction::BeginQuitHold);
+  } else if (esc_pressed && !esc_hold_fired_ && now - esc_pressed_at_ >= kLongPressMs) {
+    dispatch_(app::AppAction::Quit);
+    esc_hold_fired_ = true;
   }
 
   if (h_pressed && !h_pressed_) {
@@ -60,7 +70,20 @@ void SdlKeypad::poll() {
   }
 
   if (zoom_out_pressed && !zoom_out_pressed_) {
+    zoom_out_pressed_at_ = now;
+    zoom_out_hold_fired_ = false;
+    dispatch_(app::AppAction::BeginQuitHold);
+  } else if (zoom_out_pressed && !zoom_out_hold_fired_ &&
+             now - zoom_out_pressed_at_ >= kLongPressMs) {
+    dispatch_(app::AppAction::Quit);
+    zoom_out_hold_fired_ = true;
+  } else if (!zoom_out_pressed && zoom_out_pressed_ && !zoom_out_hold_fired_) {
+    dispatch_(app::AppAction::CancelQuitHold);
     dispatch_(app::AppAction::ZoomOut);
+  }
+
+  if (!esc_pressed && esc_pressed_ && !esc_hold_fired_) {
+    dispatch_(app::AppAction::CancelQuitHold);
   }
 
   if (zoom_in_pressed && !zoom_in_pressed_) {

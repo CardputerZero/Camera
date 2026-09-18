@@ -7,6 +7,7 @@
 #pragma once
 
 #include <cstdint>
+#include <chrono>
 #include <deque>
 #include <functional>
 #include <string>
@@ -51,6 +52,12 @@ class LinuxKeypad {
   std::deque<KeyEvent> pending_keys_;
   ActionCallback action_callback_;
   uint32_t last_key_{0};
+  bool esc_held_{false};
+  bool esc_hold_fired_{false};
+  std::chrono::steady_clock::time_point esc_pressed_at_{};
+  bool zoom_out_held_{false};
+  bool zoom_out_hold_fired_{false};
+  std::chrono::steady_clock::time_point zoom_out_pressed_at_{};
 };
 
 }  // namespace input

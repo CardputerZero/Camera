@@ -30,6 +30,10 @@
 
 namespace input {
 
+namespace {
+constexpr auto kLongPressDuration = std::chrono::milliseconds(1000);
+}
+
 #if defined(__linux__)
 namespace {
 
@@ -170,6 +174,10 @@ void LinuxKeypad::close() {
   }
 
   pending_keys_.clear();
+  esc_held_ = false;
+  esc_hold_fired_ = false;
+  zoom_out_held_ = false;
+  zoom_out_hold_fired_ = false;
 }
 
 void LinuxKeypad::poll() {
@@ -194,6 +202,17 @@ void LinuxKeypad::poll() {
       }
       break;
     }
+  }
+  const auto now = std::chrono::steady_clock::now();
+  if (action_callback_ && esc_held_ && !esc_hold_fired_ &&
+      now - esc_pressed_at_ >= kLongPressDuration) {
+    action_callback_(app::AppAction::Quit);
+    esc_hold_fired_ = true;
+  }
+  if (action_callback_ && zoom_out_held_ && !zoom_out_hold_fired_ &&
+      now - zoom_out_pressed_at_ >= kLongPressDuration) {
+    action_callback_(app::AppAction::Quit);
+    zoom_out_hold_fired_ = true;
   }
 #endif
 }
@@ -252,18 +271,46 @@ void LinuxKeypad::push_key_event_(uint16_t code, int32_t value) {
   const bool pressed = value == 1;
   pending_keys_.push_back({key, pressed});
 
-  if (!pressed || !action_callback_) {
+  const auto now = std::chrono::steady_clock::now();
+  if (key == LV_KEY_ESC) {
+    if (pressed) {
+      esc_held_ = true;
+      esc_hold_fired_ = false;
+      esc_pressed_at_ = now;
+      if (action_callback_) {
+        action_callback_(app::AppAction::BeginQuitHold);
+      }
+    } else {
+      esc_held_ = false;
+      if (!esc_hold_fired_ && action_callback_) {
+        action_callback_(app::AppAction::CancelQuitHold);
+      }
+    }
+  } else if (key == '4') {
+    if (pressed) {
+      zoom_out_held_ = true;
+      zoom_out_hold_fired_ = false;
+      zoom_out_pressed_at_ = now;
+      if (action_callback_) {
+        action_callback_(app::AppAction::BeginQuitHold);
+      }
+    } else {
+      zoom_out_held_ = false;
+      if (!zoom_out_hold_fired_ && action_callback_) {
+        action_callback_(app::AppAction::CancelQuitHold);
+        action_callback_(app::AppAction::ZoomOut);
+      }
+    }
+  }
+
+  if (!pressed || !action_callback_ || key == LV_KEY_ESC || key == '4') {
     return;
   }
 
-  if (key == LV_KEY_ESC) {
-    action_callback_(app::AppAction::Exit);
-  } else if (key == 'h' || key == 'H' || key == '1') {
+  if (key == 'h' || key == 'H' || key == '1') {
     action_callback_(app::AppAction::ToggleHint);
   } else if (key == 'u' || key == 'U') {
     action_callback_(app::AppAction::ToggleCameraBackend);
-  } else if (key == '4') {
-    action_callback_(app::AppAction::ZoomOut);
   } else if (key == '5') {
     action_callback_(app::AppAction::ZoomIn);
   } else if (key == LV_KEY_DEL || key == LV_KEY_BACKSPACE) {

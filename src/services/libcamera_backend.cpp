@@ -1330,7 +1330,7 @@ struct LibcameraBackend::Impl {
   ExifMetadata build_still_exif_metadata(const libcamera::Request* request, int width, int height) {
     ExifMetadata metadata         = make_default_exif_metadata(width, height);
     metadata.model                = "CardputerZero IMX219";
-    metadata.software             = "Camera 0.3.7";
+    metadata.software             = "Camera 0.3.8";
     metadata.f_number_x100        = 200;
     metadata.focal_length_mm_x100 = 285;
     metadata.lens_make            = "M5Stack";

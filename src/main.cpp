@@ -364,6 +364,21 @@ int main() {
   bool running = true;
   auto dispatch_app_action =
       [&running, &manager, &services, &state_machine, &help_popup](app::AppAction action) {
+        if (action == app::AppAction::Quit) {
+          help_popup->hide_exit_hint();
+          LOG_INFO("Application quit requested by held ESC/4");
+          running = false;
+          request_program_exit();
+          return;
+        }
+        if (action == app::AppAction::BeginQuitHold) {
+          help_popup->show_exit_hint();
+          return;
+        }
+        if (action == app::AppAction::CancelQuitHold) {
+          help_popup->hide_exit_hint();
+          return;
+        }
         if (action == app::AppAction::ToggleHint) {
           if (help_popup->visible()) {
             help_popup->hide();

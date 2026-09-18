@@ -362,20 +362,48 @@ int main() {
   LOG_INFO("Camera application started");
 
   bool running = true;
+  bool quit_hold_armed = false;
   auto dispatch_app_action =
-      [&running, &manager, &services, &state_machine, &help_popup](app::AppAction action) {
+      [&running,
+       &manager,
+       &services,
+       &state_machine,
+       &help_popup,
+       &quit_hold_armed](app::AppAction action) {
+        auto current = manager.current_screen();
+        const bool is_camera_screen =
+            current &&
+            std::dynamic_pointer_cast<viewmodel::CameraViewModel>(current->viewmodel()) != nullptr;
+        const bool is_gallery_screen =
+            current &&
+            std::dynamic_pointer_cast<viewmodel::GalleryViewModel>(current->viewmodel()) != nullptr;
+
         if (action == app::AppAction::Quit) {
+          const bool hold_was_armed = quit_hold_armed;
+          quit_hold_armed = false;
           help_popup->hide_exit_hint();
-          LOG_INFO("Application quit requested by held ESC/4");
-          running = false;
-          request_program_exit();
+          if (is_camera_screen && hold_was_armed) {
+            LOG_INFO("Application quit requested by held ESC/4");
+            running = false;
+            request_program_exit();
+          }
           return;
         }
         if (action == app::AppAction::BeginQuitHold) {
-          help_popup->show_exit_hint();
+          if (is_camera_screen) {
+            quit_hold_armed = true;
+            help_popup->show_exit_hint();
+          } else if (is_gallery_screen) {
+            // Gallery is a child page: ESC/4 returns immediately on key-down.
+            quit_hold_armed = false;
+            help_popup->hide_exit_hint();
+            help_popup->hide();
+            (void)dispatch_action(manager, services, app::AppAction::Exit);
+          }
           return;
         }
         if (action == app::AppAction::CancelQuitHold) {
+          quit_hold_armed = false;
           help_popup->hide_exit_hint();
           return;
         }
@@ -418,14 +446,8 @@ int main() {
           return;
         }
 
-        auto current = manager.current_screen();
-        const bool is_camera_screen =
-            current &&
-            std::dynamic_pointer_cast<viewmodel::CameraViewModel>(current->viewmodel()) != nullptr;
         if (is_camera_screen) {
-          if (action == app::AppAction::ZoomOut) {
-            action = app::AppAction::Exit;
-          } else if (action == app::AppAction::ZoomIn) {
+          if (action == app::AppAction::ZoomIn) {
             action = app::AppAction::ZoomOut;
           } else if (action == app::AppAction::OpenGallery) {
             action = app::AppAction::ZoomIn;
@@ -434,9 +456,6 @@ int main() {
           }
         }
 
-        const bool is_gallery_screen =
-            current &&
-            std::dynamic_pointer_cast<viewmodel::GalleryViewModel>(current->viewmodel()) != nullptr;
         if (is_gallery_screen) {
           if (action == app::AppAction::ZoomOut) {
             action = app::AppAction::Exit;
@@ -452,12 +471,17 @@ int main() {
         }
 
         if (action == app::AppAction::Exit) {
+          if (is_camera_screen) {
+            // A short ESC/4 release is intentionally inert on the root page.
+            return;
+          }
+          if (is_gallery_screen) {
+            (void)dispatch_action(manager, services, action);
+            return;
+          }
           if (dispatch_action(manager, services, action)) {
             return;
           }
-          LOG_INFO("Exit requested by keyboard");
-          running = false;
-          request_program_exit();
           return;
         }
 

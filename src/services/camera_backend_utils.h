@@ -105,6 +105,12 @@ bool resize_rgb888(const std::vector<uint8_t>& source,
                    int target_width,
                    int target_height,
                    std::vector<uint8_t>& output);
+bool resize_rgb565(const std::vector<uint16_t>& source,
+                   int source_width,
+                   int source_height,
+                   int target_width,
+                   int target_height,
+                   std::vector<uint16_t>& output);
 std::vector<CameraResolution> capture_resolution_candidates(CameraResolution preferred);
 bool convert_frame_to_outputs(const std::vector<const uint8_t*>& planes,
                               const std::vector<size_t>& bytes_used,

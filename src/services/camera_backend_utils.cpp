@@ -548,6 +548,34 @@ bool resize_rgb888(const std::vector<uint8_t>& source,
   return true;
 }
 
+bool resize_rgb565(const std::vector<uint16_t>& source,
+                   int source_width,
+                   int source_height,
+                   int target_width,
+                   int target_height,
+                   std::vector<uint16_t>& output) {
+  if (source_width <= 0 || source_height <= 0 || target_width <= 0 || target_height <= 0 ||
+      source.size() < static_cast<size_t>(source_width) * source_height) {
+    output.clear();
+    return false;
+  }
+  if (source_width == target_width && source_height == target_height) {
+    output = source;
+    return true;
+  }
+
+  output.resize(static_cast<size_t>(target_width) * target_height);
+  for (int y = 0; y < target_height; ++y) {
+    const int source_y = std::min(source_height - 1, y * source_height / target_height);
+    for (int x = 0; x < target_width; ++x) {
+      const int source_x = std::min(source_width - 1, x * source_width / target_width);
+      output[static_cast<size_t>(y) * target_width + x] =
+          source[static_cast<size_t>(source_y) * source_width + source_x];
+    }
+  }
+  return true;
+}
+
 bool convert_frame_to_outputs(const std::vector<const uint8_t*>& planes,
                               const std::vector<size_t>& bytes_used,
                               int width,

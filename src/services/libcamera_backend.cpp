@@ -60,6 +60,8 @@ namespace {
 using namespace camera_backend;
 constexpr unsigned int kPreviewBufferCount   = 1;
 constexpr unsigned int kCaptureBufferCount   = 1;
+constexpr int kPreviewStreamWidth            = 640;
+constexpr int kPreviewStreamHeight           = 480;
 constexpr int64_t kPreviewMinFrameDurationUs = 16667;
 constexpr int64_t kPreviewMaxFrameDurationUs = 33333;
 constexpr int64_t kStillMinFrameDurationUs   = 100;
@@ -429,6 +431,7 @@ struct LibcameraBackend::Impl {
   CameraResolution capture_requested_resolution{kSensorMaxWidth, kSensorMaxHeight};
   CameraFrame pending_frame;
   CameraFramePool preview_pool{3};
+  CameraFramePool display_preview_pool{3};
   bool new_frame{false};
   std::atomic<bool> opened{false};
   std::atomic<bool> streaming{false};
@@ -667,8 +670,8 @@ struct LibcameraBackend::Impl {
 
     config->orientation                         = libcamera::Orientation::Rotate180;
     libcamera::StreamConfiguration& preview_cfg = config->at(0);
-    preview_cfg.size.width                      = kPreviewWidth;
-    preview_cfg.size.height                     = kPreviewHeight;
+    preview_cfg.size.width                      = kPreviewStreamWidth;
+    preview_cfg.size.height                     = kPreviewStreamHeight;
     preview_cfg.pixelFormat                     = libcamera::formats::RGB565;
     preview_cfg.bufferCount                     = kPreviewBufferCount;
 
@@ -985,9 +988,11 @@ struct LibcameraBackend::Impl {
       release_stream_resources();
       return false;
     }
-    LOG_INFO("Camera preview started: {}x{} stride={} format={} buffers={}",
+    LOG_INFO("Camera preview started: stream={}x{} display={}x{} stride={} format={} buffers={}",
              preview_w,
              preview_h,
+             kPreviewWidth,
+             kPreviewHeight,
              preview_stride,
              preview_format.toString(),
              kPreviewBufferCount);
@@ -1330,7 +1335,7 @@ struct LibcameraBackend::Impl {
   ExifMetadata build_still_exif_metadata(const libcamera::Request* request, int width, int height) {
     ExifMetadata metadata         = make_default_exif_metadata(width, height);
     metadata.model                = "CardputerZero IMX219";
-    metadata.software             = "Camera 0.3.8";
+    metadata.software             = "Camera 1.0.0";
     metadata.f_number_x100        = 200;
     metadata.focal_length_mm_x100 = 285;
     metadata.lens_make            = "M5Stack";
@@ -1889,6 +1894,22 @@ struct LibcameraBackend::Impl {
                                   std::chrono::steady_clock::now() - convert_started)
                                   .count());
     if (converted) {
+      CameraFrame display_frame;
+      display_frame.width  = kPreviewWidth;
+      display_frame.height = kPreviewHeight;
+      display_frame.rgb565 = display_preview_pool.acquire(
+          static_cast<size_t>(display_frame.width) * display_frame.height);
+      if (!display_frame.rgb565 ||
+          !resize_rgb565(*converted_frame.rgb565,
+                         converted_frame.width,
+                         converted_frame.height,
+                         display_frame.width,
+                         display_frame.height,
+                         *display_frame.rgb565)) {
+        ++preview_dropped_frames;
+        return false;
+      }
+
       bool video_failed = false;
       {
         std::lock_guard<std::mutex> video_lock(video_mutex);
@@ -1899,7 +1920,7 @@ struct LibcameraBackend::Impl {
         }
       }
       std::lock_guard<std::mutex> lock(mutex);
-      pending_frame            = std::move(converted_frame);
+      pending_frame            = std::move(display_frame);
       new_frame                = true;
       const uint64_t published = ++preview_published_frames;
       if (video_failed) {

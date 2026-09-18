@@ -98,6 +98,25 @@ void test_rgb_resize_produces_requested_dimensions() {
   assert(resized.empty());
 }
 
+void test_rgb565_resize_preserves_full_frame_content() {
+  const std::vector<uint16_t> source = {
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+  };
+  std::vector<uint16_t> resized;
+  assert(service::camera_backend::resize_rgb565(source, 3, 2, 2, 2, resized));
+  assert(resized.size() == 4u);
+  assert(resized[0] == 1 && resized[1] == 2);
+  assert(resized[2] == 4 && resized[3] == 5);
+
+  assert(!service::camera_backend::resize_rgb565({}, 3, 2, 2, 2, resized));
+  assert(resized.empty());
+}
+
 void expect_saved_jpeg_dimensions(int width, int height) {
   const std::vector<uint8_t> source = {
       255,
@@ -226,6 +245,7 @@ int main() {
   test_frame_moves_without_copying_pixels();
   test_limiter_keeps_latest_frame_and_handles_wrap();
   test_rgb_resize_produces_requested_dimensions();
+  test_rgb565_resize_preserves_full_frame_content();
   test_saved_jpeg_matches_setting_resolutions();
   test_yuv420_jpeg_honours_dimensions_and_stride();
   test_still_stability_uses_colour_gains_when_awb_state_is_unavailable();

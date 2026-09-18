@@ -11,6 +11,7 @@
 #endif
 
 #include <functional>
+#include <cstdint>
 
 #include "app/app_action.h"
 
@@ -36,12 +37,16 @@ class SdlKeypad {
 
   ActionCallback action_callback_;
   bool esc_pressed_{false};
+  bool esc_hold_fired_{false};
+  uint32_t esc_pressed_at_{0};
   bool h_pressed_{false};
   bool help_pressed_{false};
   bool capture_pressed_{false};
   bool confirm_pressed_{false};
   bool delete_pressed_{false};
   bool zoom_out_pressed_{false};
+  bool zoom_out_hold_fired_{false};
+  uint32_t zoom_out_pressed_at_{0};
   bool zoom_in_pressed_{false};
   bool gallery_pressed_{false};
   bool mode_pressed_{false};

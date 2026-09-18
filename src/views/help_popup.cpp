@@ -33,7 +33,7 @@ struct HelpRow {
 };
 
 constexpr std::array<HelpRow, 7> kCameraRows{{
-    {"4", "Back / exit"},
+    {"4", "Back (hold to exit)"},
     {"5 / 7", "Zoom out / in"},
     {"6 / ENTER", "Take photo"},
     {"8", "Open gallery"},
@@ -43,7 +43,7 @@ constexpr std::array<HelpRow, 7> kCameraRows{{
 }};
 
 constexpr std::array<HelpRow, 7> kGalleryRows{{
-    {"4", "Back to camera"},
+    {"4", "Back (hold to exit)"},
     {"5 / 7", "Previous / next"},
     {"6", "Photo info"},
     {"8", "Delete photo"},
@@ -95,6 +95,22 @@ void HelpPopup::scroll(int32_t direction) {
     return;
   }
   lv_obj_scroll_by_bounded(content_, 0, -direction * kScrollStep, LV_ANIM_ON);
+}
+
+void HelpPopup::show_exit_hint() {
+  if (!exit_hint_backdrop_) {
+    build_exit_hint_(lv_layer_top());
+  }
+  if (exit_hint_backdrop_) {
+    lv_obj_move_foreground(exit_hint_backdrop_);
+    lv_obj_remove_flag(exit_hint_backdrop_, LV_OBJ_FLAG_HIDDEN);
+  }
+}
+
+void HelpPopup::hide_exit_hint() {
+  if (exit_hint_backdrop_ && lv_obj_is_valid(exit_hint_backdrop_)) {
+    lv_obj_add_flag(exit_hint_backdrop_, LV_OBJ_FLAG_HIDDEN);
+  }
 }
 
 void HelpPopup::build_(lv_obj_t* parent) {
@@ -201,10 +217,41 @@ void HelpPopup::build_(lv_obj_t* parent) {
   lv_obj_t* footer = lv_label_create(panel_);
   lv_obj_set_style_text_font(footer, Font::standard_medium(10), 0);
   lv_obj_set_style_text_color(footer, lv_color_hex(color::DARK_ONSURFACEVARIANT), 0);
-  lv_label_set_text(footer, "FN+H  Close     ESC  Back");
+  lv_label_set_text(footer, "FN+H  Close     Hold ESC / 4  Exit");
   lv_obj_align(footer, LV_ALIGN_BOTTOM_LEFT, 11, -5);
 
   hide();
+}
+
+void HelpPopup::build_exit_hint_(lv_obj_t* parent) {
+  if (!parent || exit_hint_backdrop_) {
+    return;
+  }
+
+  exit_hint_backdrop_ = lv_obj_create(parent);
+  style_plain_container(exit_hint_backdrop_);
+  lv_obj_set_size(exit_hint_backdrop_, LV_PCT(100), LV_PCT(100));
+  lv_obj_set_style_bg_color(exit_hint_backdrop_, lv_color_black(), 0);
+  lv_obj_set_style_bg_opa(exit_hint_backdrop_, LV_OPA_50, 0);
+
+  exit_hint_panel_ = lv_obj_create(exit_hint_backdrop_);
+  lv_obj_set_size(exit_hint_panel_, 198, 52);
+  lv_obj_set_style_bg_color(exit_hint_panel_, lv_color_hex(color::DARK_SURFACECONTAINERHIGH), 0);
+  lv_obj_set_style_bg_opa(exit_hint_panel_, LV_OPA_COVER, 0);
+  lv_obj_set_style_border_color(exit_hint_panel_, lv_color_hex(color::DARK_PRIMARY), 0);
+  lv_obj_set_style_border_width(exit_hint_panel_, 1, 0);
+  lv_obj_set_style_radius(exit_hint_panel_, 8, 0);
+  lv_obj_set_style_pad_all(exit_hint_panel_, 0, 0);
+  lv_obj_clear_flag(exit_hint_panel_, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_center(exit_hint_panel_);
+
+  lv_obj_t* title = lv_label_create(exit_hint_panel_);
+  lv_obj_set_style_text_font(title, Font::standard_medium(13), 0);
+  lv_obj_set_style_text_color(title, lv_color_hex(color::DARK_ONSURFACE), 0);
+  lv_label_set_text(title, "Hold ESC / 4 to exit");
+  lv_obj_align(title, LV_ALIGN_CENTER, 0, 0);
+
+  lv_obj_add_flag(exit_hint_backdrop_, LV_OBJ_FLAG_HIDDEN);
 }
 
 void HelpPopup::update_rows_(app::AppState page) {
@@ -224,6 +271,11 @@ void HelpPopup::destroy_() {
   }
   backdrop_   = nullptr;
   panel_      = nullptr;
+  if (exit_hint_backdrop_ && lv_obj_is_valid(exit_hint_backdrop_)) {
+    lv_obj_delete(exit_hint_backdrop_);
+  }
+  exit_hint_backdrop_ = nullptr;
+  exit_hint_panel_ = nullptr;
   page_badge_ = nullptr;
   content_    = nullptr;
   rows_       = {};

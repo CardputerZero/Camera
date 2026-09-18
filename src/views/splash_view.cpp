@@ -168,16 +168,17 @@ void SplashView::build_exit_hint_() {
   lv_obj_t* exit_pre_label = lv_label_create(exit_hint_container_);
   lv_obj_set_style_text_font(exit_pre_label, Font::standard_regular(16), 0);
   lv_obj_set_style_text_color(exit_pre_label, lv_color_hex(color::LIGHT_ONSURFACE), 0);
-  lv_label_set_text(exit_pre_label, "Press");
+  lv_label_set_text(exit_pre_label, "Hold");
 
   /* ESC (key/button) default style */
   lv_obj_t* exit_hint_btn = lv_button_create(exit_hint_container_);
   // lv_obj_set_style_bg_color(exit_hint_btn, lv_color_t value, 0);
-  lv_obj_set_style_width(exit_hint_btn, 36, 0);
+  lv_obj_set_style_width(exit_hint_btn, 62, 0);
   lv_obj_set_style_height(exit_hint_btn, 36, 0);
-  lv_obj_set_style_bg_opa(exit_hint_btn, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_bg_color(exit_hint_btn, lv_color_hex(color::LIGHT_PRIMARYCONTAINER), 0);
+  lv_obj_set_style_bg_opa(exit_hint_btn, LV_OPA_COVER, 0);
   lv_obj_set_style_border_opa(exit_hint_btn, LV_OPA_TRANSP, 0);
-  lv_obj_set_style_radius(exit_hint_btn, 18, 0);
+  lv_obj_set_style_radius(exit_hint_btn, 8, 0);
 
   /* Text button pressed state */
   lv_obj_set_style_bg_color(exit_hint_btn, lv_color_hex(color::LIGHT_PRIMARY), LV_STATE_PRESSED);
@@ -185,17 +186,17 @@ void SplashView::build_exit_hint_() {
 
   /* Hint key label */
   lv_obj_t* exit_hint_key_label = lv_label_create(exit_hint_btn);
-  lv_obj_set_style_text_font(exit_hint_key_label, Font::keyboard_icons(48), 0);
-  lv_obj_set_style_text_color(exit_hint_key_label, lv_color_hex(color::LIGHT_ONSURFACE), 0);
+  lv_obj_set_style_text_font(exit_hint_key_label, Font::standard_medium(13), 0);
+  lv_obj_set_style_text_color(exit_hint_key_label, lv_color_hex(color::LIGHT_ONPRIMARYCONTAINER), 0);
   lv_obj_set_align(exit_hint_key_label, LV_ALIGN_CENTER);
-  lv_obj_set_style_translate_y(exit_hint_key_label, -2, 0);
-  lv_label_set_text(exit_hint_key_label, ui::font::KEYBOARD_ESCAPE);
+  lv_obj_set_style_translate_y(exit_hint_key_label, 0, 0);
+  lv_label_set_text(exit_hint_key_label, "ESC / 4");
 
   /* to return */
   lv_obj_t* exit_suf_label = lv_label_create(exit_hint_container_);
   lv_obj_set_style_text_font(exit_suf_label, Font::standard_regular(16), 0);
   lv_obj_set_style_text_color(exit_suf_label, lv_color_hex(color::LIGHT_ONSURFACE), 0);
-  lv_label_set_text(exit_suf_label, "to return...");
+  lv_label_set_text(exit_suf_label, "to exit");
 }
 
 void SplashView::start_launch_animation_() {

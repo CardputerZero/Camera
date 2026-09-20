@@ -60,8 +60,8 @@ namespace {
 using namespace camera_backend;
 constexpr unsigned int kPreviewBufferCount   = 1;
 constexpr unsigned int kCaptureBufferCount   = 1;
-constexpr int kPreviewStreamWidth            = 640;
-constexpr int kPreviewStreamHeight           = 480;
+constexpr int kPreviewStreamWidth            = kDefaultCaptureWidth;
+constexpr int kPreviewStreamHeight           = kDefaultCaptureHeight;
 constexpr int64_t kPreviewMinFrameDurationUs = 16667;
 constexpr int64_t kPreviewMaxFrameDurationUs = 33333;
 constexpr int64_t kStillMinFrameDurationUs   = 100;
@@ -1335,7 +1335,6 @@ struct LibcameraBackend::Impl {
   ExifMetadata build_still_exif_metadata(const libcamera::Request* request, int width, int height) {
     ExifMetadata metadata         = make_default_exif_metadata(width, height);
     metadata.model                = "CardputerZero IMX219";
-    metadata.software             = "Camera 1.0.0";
     metadata.f_number_x100        = 200;
     metadata.focal_length_mm_x100 = 285;
     metadata.lens_make            = "M5Stack";

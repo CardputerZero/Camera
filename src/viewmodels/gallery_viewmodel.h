@@ -64,7 +64,7 @@ class GalleryViewModel : public BaseViewModel {
   ui::SubjectBool confirm_delete_subject_{false};
   ui::SubjectInt delete_choice_subject_{0};
   ui::SubjectBool info_visible_subject_{false};
-  ui::SubjectString<512> info_text_subject_{""};
+  ui::SubjectString<4096> info_text_subject_{""};
   ui::SubjectInt info_scroll_subject_{0};
 };
 

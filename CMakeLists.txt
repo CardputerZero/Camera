@@ -6,7 +6,7 @@
 
 cmake_minimum_required(VERSION 3.23)
 
-set(CAMERA_APP_VERSION "1.0.0" CACHE STRING "CameraApp semantic version")
+set(CAMERA_APP_VERSION "1.0.1" CACHE STRING "CameraApp semantic version")
 project(camera_app VERSION "${CAMERA_APP_VERSION}" LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -452,6 +452,7 @@ target_include_directories(${PROJECT_NAME}_services PUBLIC ${APP_COMMON_INCLUDE_
 target_compile_definitions(${PROJECT_NAME}_services PUBLIC
     USE_DESKTOP=$<BOOL:${USE_DESKTOP}>
     APP_MINIAUDIO_HEADER="${MINIAUDIO_INCLUDE_DIR}/miniaudio.h"
+    CAMERA_APP_SOFTWARE_VERSION="Camera ${PROJECT_VERSION}"
 )
 target_link_libraries(${PROJECT_NAME}_services PUBLIC ${PROJECT_NAME}_utils ${APP_DEP_LIBS})
 

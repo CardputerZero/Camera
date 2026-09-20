@@ -8,7 +8,11 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <ctime>
+#include <fstream>
+#include <limits>
+#include <map>
 #include <numeric>
 
 namespace service::camera_backend {
@@ -25,6 +29,12 @@ struct IfdEntry {
   uint16_t type{0};
   uint32_t count{0};
   std::vector<uint8_t> value;
+};
+
+struct ParsedIfdEntry {
+  uint16_t type{0};
+  uint32_t count{0};
+  size_t value_offset{0};
 };
 
 void append_u16(std::vector<uint8_t>& data, uint16_t value) {
@@ -168,10 +178,251 @@ std::string current_exif_datetime() {
   return buffer;
 }
 
+class TiffReader {
+ public:
+  explicit TiffReader(const std::vector<uint8_t>& data) : data_(data) {}
+
+  bool initialize() {
+    if (data_.size() < 8) {
+      return false;
+    }
+    if (data_[0] == 'I' && data_[1] == 'I') {
+      little_endian_ = true;
+    } else if (data_[0] == 'M' && data_[1] == 'M') {
+      little_endian_ = false;
+    } else {
+      return false;
+    }
+
+    uint16_t magic = 0;
+    return read_u16(2, magic) && magic == 42;
+  }
+
+  bool read_u16(size_t offset, uint16_t& value) const {
+    if (offset > data_.size() || data_.size() - offset < 2) {
+      return false;
+    }
+    if (little_endian_) {
+      value = static_cast<uint16_t>(data_[offset] | (data_[offset + 1] << 8));
+    } else {
+      value = static_cast<uint16_t>((data_[offset] << 8) | data_[offset + 1]);
+    }
+    return true;
+  }
+
+  bool read_u32(size_t offset, uint32_t& value) const {
+    if (offset > data_.size() || data_.size() - offset < 4) {
+      return false;
+    }
+    if (little_endian_) {
+      value = static_cast<uint32_t>(data_[offset]) |
+              (static_cast<uint32_t>(data_[offset + 1]) << 8) |
+              (static_cast<uint32_t>(data_[offset + 2]) << 16) |
+              (static_cast<uint32_t>(data_[offset + 3]) << 24);
+    } else {
+      value = (static_cast<uint32_t>(data_[offset]) << 24) |
+              (static_cast<uint32_t>(data_[offset + 1]) << 16) |
+              (static_cast<uint32_t>(data_[offset + 2]) << 8) |
+              static_cast<uint32_t>(data_[offset + 3]);
+    }
+    return true;
+  }
+
+  bool read_ifd(uint32_t offset, std::map<uint16_t, ParsedIfdEntry>& entries) const {
+    uint16_t count = 0;
+    if (!read_u16(offset, count)) {
+      return false;
+    }
+
+    const size_t table_offset = static_cast<size_t>(offset) + 2;
+    const size_t table_bytes  = static_cast<size_t>(count) * 12 + 4;
+    if (table_offset > data_.size() || data_.size() - table_offset < table_bytes) {
+      return false;
+    }
+
+    for (uint16_t index = 0; index < count; ++index) {
+      const size_t entry_offset = table_offset + static_cast<size_t>(index) * 12;
+      uint16_t tag              = 0;
+      uint16_t type             = 0;
+      uint32_t value_count      = 0;
+      if (!read_u16(entry_offset, tag) || !read_u16(entry_offset + 2, type) ||
+          !read_u32(entry_offset + 4, value_count)) {
+        return false;
+      }
+
+      const size_t type_size = type_size_(type);
+      if (type_size == 0 || value_count > std::numeric_limits<size_t>::max() / type_size) {
+        continue;
+      }
+      const size_t value_size = static_cast<size_t>(value_count) * type_size;
+      size_t value_offset     = entry_offset + 8;
+      if (value_size > 4) {
+        uint32_t pointed_offset = 0;
+        if (!read_u32(entry_offset + 8, pointed_offset)) {
+          continue;
+        }
+        value_offset = pointed_offset;
+      }
+      if (value_offset > data_.size() || data_.size() - value_offset < value_size) {
+        continue;
+      }
+      entries[tag] = {type, value_count, value_offset};
+    }
+    return true;
+  }
+
+  bool read_field_u32(const ParsedIfdEntry& field, uint32_t& value) const {
+    if (field.count < 1) {
+      return false;
+    }
+    if (field.type == kTypeShort) {
+      uint16_t short_value = 0;
+      return read_u16(field.value_offset, short_value) && (value = short_value, true);
+    }
+    return field.type == kTypeLong && read_u32(field.value_offset, value);
+  }
+
+  bool read_field_rational(const ParsedIfdEntry& field, double& value) const {
+    if (field.count < 1 || (field.type != kTypeRational && field.type != 10)) {
+      return false;
+    }
+    uint32_t numerator_raw   = 0;
+    uint32_t denominator_raw = 0;
+    if (!read_u32(field.value_offset, numerator_raw) ||
+        !read_u32(field.value_offset + 4, denominator_raw) || denominator_raw == 0) {
+      return false;
+    }
+    const int64_t numerator = field.type == 10 ? static_cast<int32_t>(numerator_raw)
+                                               : static_cast<int64_t>(numerator_raw);
+    const int64_t denominator = field.type == 10 ? static_cast<int32_t>(denominator_raw)
+                                                  : static_cast<int64_t>(denominator_raw);
+    if (denominator == 0) {
+      return false;
+    }
+    value = static_cast<double>(numerator) / static_cast<double>(denominator);
+    return true;
+  }
+
+  bool read_field_ascii(const ParsedIfdEntry& field, std::string& value) const {
+    if (field.type != kTypeAscii && field.type != kTypeUndefined) {
+      return false;
+    }
+    const size_t end = field.value_offset + static_cast<size_t>(field.count);
+    if (end > data_.size()) {
+      return false;
+    }
+    size_t start = field.value_offset;
+    if (field.type == kTypeUndefined && field.count >= 8 &&
+        std::equal(data_.begin() + static_cast<std::ptrdiff_t>(start),
+                   data_.begin() + static_cast<std::ptrdiff_t>(start + 6),
+                   std::array<uint8_t, 6>{'A', 'S', 'C', 'I', 'I', '\0'}.begin())) {
+      start += 8;
+    }
+    const auto begin = data_.begin() + static_cast<std::ptrdiff_t>(start);
+    const auto finish = data_.begin() + static_cast<std::ptrdiff_t>(end);
+    const auto null_byte = std::find(begin, finish, static_cast<uint8_t>(0));
+    value.assign(begin, null_byte);
+    return true;
+  }
+
+ private:
+  static size_t type_size_(uint16_t type) {
+    switch (type) {
+      case 1:
+      case 2:
+      case 7:
+        return 1;
+      case 3:
+        return 2;
+      case 4:
+      case 9:
+        return 4;
+      case 5:
+      case 10:
+        return 8;
+      default:
+        return 0;
+    }
+  }
+
+  const std::vector<uint8_t>& data_;
+  bool little_endian_{true};
+};
+
+bool read_binary_file(const std::string& path, std::vector<uint8_t>& data) {
+  std::ifstream file(path, std::ios::binary | std::ios::ate);
+  if (!file) {
+    return false;
+  }
+  const std::streampos end = file.tellg();
+  if (end <= 0) {
+    return false;
+  }
+  data.resize(static_cast<size_t>(end));
+  file.seekg(0, std::ios::beg);
+  return static_cast<bool>(file.read(reinterpret_cast<char*>(data.data()),
+                                     static_cast<std::streamsize>(data.size())));
+}
+
+bool find_exif_tiff(const std::vector<uint8_t>& jpeg, std::vector<uint8_t>& tiff) {
+  if (jpeg.size() < 2 || jpeg[0] != 0xFF || jpeg[1] != 0xD8) {
+    return false;
+  }
+
+  size_t offset = 2;
+  while (offset + 1 < jpeg.size()) {
+    if (jpeg[offset] != 0xFF) {
+      ++offset;
+      continue;
+    }
+    while (offset < jpeg.size() && jpeg[offset] == 0xFF) {
+      ++offset;
+    }
+    if (offset >= jpeg.size()) {
+      break;
+    }
+
+    const uint8_t marker = jpeg[offset++];
+    if (marker == 0xD9 || marker == 0xDA) {
+      break;
+    }
+    if (marker == 0xD8 || (marker >= 0xD0 && marker <= 0xD7)) {
+      continue;
+    }
+    if (offset + 2 > jpeg.size()) {
+      break;
+    }
+
+    const uint16_t segment_length = static_cast<uint16_t>((jpeg[offset] << 8) | jpeg[offset + 1]);
+    if (segment_length < 2 || offset + segment_length > jpeg.size()) {
+      break;
+    }
+    if (marker == 0xE1 && segment_length >= 8 &&
+        std::equal(jpeg.begin() + static_cast<std::ptrdiff_t>(offset + 2),
+                   jpeg.begin() + static_cast<std::ptrdiff_t>(offset + 8),
+                   std::array<uint8_t, 6>{'E', 'x', 'i', 'f', '\0', '\0'}.begin())) {
+      const size_t tiff_offset = offset + 8;
+      tiff.assign(jpeg.begin() + static_cast<std::ptrdiff_t>(tiff_offset),
+                  jpeg.begin() + static_cast<std::ptrdiff_t>(offset + segment_length));
+      return true;
+    }
+    offset += segment_length;
+  }
+  return false;
+}
+
+template <typename T>
+T clamp_numeric(double value) {
+  const double min_value = static_cast<double>(std::numeric_limits<T>::min());
+  const double max_value = static_cast<double>(std::numeric_limits<T>::max());
+  return static_cast<T>(std::clamp(value, min_value, max_value));
+}
+
 }  // namespace
 
 ExifMetadata make_default_exif_metadata(int width, int height) {
   ExifMetadata metadata;
+  metadata.software           = CAMERA_APP_SOFTWARE_VERSION;
   metadata.date_time_original = current_exif_datetime();
   metadata.width              = width;
   metadata.height             = height;
@@ -191,7 +442,7 @@ std::vector<uint8_t> build_exif_app1(const ExifMetadata& metadata) {
       rational_entry(0x011A, 72, 1),
       rational_entry(0x011B, 72, 1),
       short_entry(0x0128, 2),
-      ascii_entry(0x0131, metadata.software.empty() ? "Camera 1.0.0" : metadata.software),
+      ascii_entry(0x0131, metadata.software.empty() ? CAMERA_APP_SOFTWARE_VERSION : metadata.software),
       long_entry(0x8769, 0),
   };
 
@@ -259,6 +510,109 @@ std::vector<uint8_t> build_exif_app1(const ExifMetadata& metadata) {
 
   payload.insert(payload.end(), tiff.begin(), tiff.end());
   return payload;
+}
+
+bool read_jpeg_exif_metadata(const std::string& path, ExifMetadata& metadata) {
+  metadata = ExifMetadata{};
+
+  std::vector<uint8_t> jpeg;
+  std::vector<uint8_t> tiff;
+  if (!read_binary_file(path, jpeg) || !find_exif_tiff(jpeg, tiff)) {
+    return false;
+  }
+
+  TiffReader reader(tiff);
+  if (!reader.initialize()) {
+    return false;
+  }
+
+  std::map<uint16_t, ParsedIfdEntry> ifd0;
+  if (!reader.read_ifd(8, ifd0)) {
+    return false;
+  }
+
+  std::map<uint16_t, ParsedIfdEntry> exif_ifd;
+  const auto exif_pointer = ifd0.find(0x8769);
+  if (exif_pointer != ifd0.end()) {
+    uint32_t exif_offset = 0;
+    if (reader.read_field_u32(exif_pointer->second, exif_offset)) {
+      (void)reader.read_ifd(exif_offset, exif_ifd);
+    }
+  }
+
+  bool has_metadata = false;
+  auto read_ascii = [&reader, &has_metadata](const std::map<uint16_t, ParsedIfdEntry>& fields,
+                                              uint16_t tag,
+                                              std::string& value) {
+    const auto it = fields.find(tag);
+    if (it != fields.end() && reader.read_field_ascii(it->second, value)) {
+      has_metadata = true;
+    }
+  };
+  auto read_u32 = [&reader, &has_metadata](const std::map<uint16_t, ParsedIfdEntry>& fields,
+                                            uint16_t tag,
+                                            uint32_t& value) {
+    const auto it = fields.find(tag);
+    if (it != fields.end() && reader.read_field_u32(it->second, value)) {
+      has_metadata = true;
+      return true;
+    }
+    return false;
+  };
+  auto read_rational = [&reader, &has_metadata](const std::map<uint16_t, ParsedIfdEntry>& fields,
+                                                 uint16_t tag,
+                                                 double& value) {
+    const auto it = fields.find(tag);
+    if (it != fields.end() && reader.read_field_rational(it->second, value)) {
+      has_metadata = true;
+      return true;
+    }
+    return false;
+  };
+
+  read_ascii(ifd0, 0x010F, metadata.make);
+  read_ascii(ifd0, 0x0110, metadata.model);
+  read_ascii(ifd0, 0x0131, metadata.software);
+  read_ascii(exif_ifd, 0x9003, metadata.date_time_original);
+  read_ascii(exif_ifd, 0x9286, metadata.user_comment);
+  read_ascii(exif_ifd, 0xA433, metadata.lens_make);
+  read_ascii(exif_ifd, 0xA434, metadata.lens_model);
+
+  uint32_t value = 0;
+  if (read_u32(exif_ifd, 0xA002, value)) {
+    metadata.width = static_cast<int>(std::min<uint32_t>(value, std::numeric_limits<int>::max()));
+  }
+  if (read_u32(exif_ifd, 0xA003, value)) {
+    metadata.height = static_cast<int>(std::min<uint32_t>(value, std::numeric_limits<int>::max()));
+  }
+  if (read_u32(exif_ifd, 0x8827, value)) {
+    metadata.iso_speed = clamp_numeric<uint16_t>(value);
+  }
+  if (read_u32(exif_ifd, 0x9207, value)) {
+    metadata.metering_mode = clamp_numeric<uint16_t>(value);
+  }
+  if (read_u32(exif_ifd, 0x9208, value)) {
+    metadata.light_source = clamp_numeric<uint16_t>(value);
+  }
+
+  double rational = 0.0;
+  if (read_rational(exif_ifd, 0x829A, rational)) {
+    metadata.exposure_time_us = clamp_numeric<int32_t>(rational * 1000000.0);
+  }
+  if (read_rational(exif_ifd, 0x9203, rational)) {
+    metadata.brightness_value = clamp_numeric<int32_t>(rational * 100.0);
+  }
+  if (read_rational(exif_ifd, 0x9204, rational)) {
+    metadata.exposure_bias_value = clamp_numeric<int32_t>(rational * 100.0);
+  }
+  if (read_rational(exif_ifd, 0x829D, rational)) {
+    metadata.f_number_x100 = clamp_numeric<uint32_t>(rational * 100.0);
+  }
+  if (read_rational(exif_ifd, 0x920A, rational)) {
+    metadata.focal_length_mm_x100 = clamp_numeric<uint32_t>(rational * 100.0);
+  }
+
+  return has_metadata;
 }
 
 }  // namespace service::camera_backend

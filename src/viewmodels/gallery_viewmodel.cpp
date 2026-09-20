@@ -17,6 +17,8 @@
 #include <sstream>
 #include <utility>
 
+#include "services/jpeg_metadata.h"
+
 namespace viewmodel {
 namespace {
 
@@ -152,6 +154,42 @@ std::string format_file_time(const std::string& path) {
 
   std::ostringstream out;
   out << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+  return out.str();
+}
+
+std::string format_file_size(const std::string& path) {
+  std::error_code ec;
+  const uintmax_t bytes = std::filesystem::file_size(path, ec);
+  if (ec) {
+    return "Unknown";
+  }
+
+  std::ostringstream out;
+  if (bytes < 1024) {
+    out << bytes << " B";
+  } else if (bytes < 1024 * 1024) {
+    out << std::fixed << std::setprecision(1) << bytes / 1024.0 << " KiB";
+  } else {
+    out << std::fixed << std::setprecision(1) << bytes / (1024.0 * 1024.0) << " MiB";
+  }
+  return out.str();
+}
+
+std::string format_exposure_time(int32_t exposure_time_us) {
+  if (exposure_time_us <= 0) {
+    return "Unknown";
+  }
+  if (exposure_time_us >= 1000000) {
+    std::ostringstream out;
+    out << std::fixed << std::setprecision(2) << exposure_time_us / 1000000.0 << " s";
+    return out.str();
+  }
+  return std::to_string(exposure_time_us) + " us";
+}
+
+std::string format_decimal_x100(uint32_t value) {
+  std::ostringstream out;
+  out << std::fixed << std::setprecision(2) << value / 100.0;
   return out.str();
 }
 
@@ -324,14 +362,46 @@ std::string GalleryViewModel::build_info_text_() const {
   }
 
   const ImageDimensions dimensions = read_image_dimensions(path);
+  service::camera_backend::ExifMetadata metadata;
+  const bool has_exif = service::camera_backend::read_jpeg_exif_metadata(path, metadata);
+  const int width     = has_exif && metadata.width > 0 ? metadata.width : dimensions.width;
+  const int height    = has_exif && metadata.height > 0 ? metadata.height : dimensions.height;
+
   std::ostringstream out;
-  out << "File\n" << std::filesystem::path(path).filename().string() << "\n\nSize\n";
-  if (dimensions.width > 0 && dimensions.height > 0) {
-    out << dimensions.width << " x " << dimensions.height;
+  out << "File\n" << std::filesystem::path(path).filename().string() << "\n\nImage\n";
+  if (width > 0 && height > 0) {
+    out << width << " x " << height;
   } else {
     out << "Unknown";
   }
-  out << "\n\nCreated\n" << format_file_time(path);
+
+  out << "\n" << format_file_size(path) << "\n\nFile time\n" << format_file_time(path);
+  if (!has_exif) {
+    return out.str();
+  }
+
+  if (!metadata.make.empty() || !metadata.model.empty() || metadata.focal_length_mm_x100 ||
+      metadata.f_number_x100 || metadata.iso_speed || metadata.exposure_time_us) {
+    out << "\n\nCamera metadata";
+  }
+  if (!metadata.make.empty()) {
+    out << "\nManufacturer: " << metadata.make;
+  }
+  if (!metadata.model.empty()) {
+    out << "\nModel: " << metadata.model;
+  }
+  if (metadata.focal_length_mm_x100) {
+    out << "\nFocal length: " << format_decimal_x100(*metadata.focal_length_mm_x100) << " mm";
+  }
+  if (metadata.f_number_x100) {
+    out << "\nF-number: f/" << format_decimal_x100(*metadata.f_number_x100);
+  }
+  if (metadata.iso_speed) {
+    out << "\nISO: " << *metadata.iso_speed;
+  }
+  if (metadata.exposure_time_us) {
+    out << "\nExposure: " << format_exposure_time(*metadata.exposure_time_us);
+  }
   return out.str();
 }
 

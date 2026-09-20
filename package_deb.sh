@@ -25,6 +25,9 @@ CMAKE_CACHE="${BUILD_DIR}/CMakeCache.txt"
 CPACK_CONFIG="${BUILD_DIR}/CPackConfig.cmake"
 
 EFFECTIVE_VERSION="$(sed -nE 's/^CAMERA_APP_VERSION:[^=]+=(.+)$/\1/p' "${CMAKE_CACHE}" | head -n1)"
+DISPLAY_NAME="$(sed -nE 's/^APP_DISPLAY_NAME:[^=]+=(.+)$/\1/p' "${CMAKE_CACHE}" | head -n1)"
+DEBIAN_REVISION="$(sed -nE 's/^APP_DEBIAN_REVISION:[^=]+=(.+)$/\1/p' "${CMAKE_CACHE}" | head -n1)"
+DEBIAN_ARCHITECTURE="$(sed -nE 's/^APP_DEBIAN_ARCHITECTURE:[^=]+=(.+)$/\1/p' "${CMAKE_CACHE}" | head -n1)"
 CPACK_VERSION="$(sed -nE 's/^set\(CPACK_PACKAGE_VERSION "([^"]+)"\)$/\1/p' \
   "${CPACK_CONFIG}" | head -n1)"
 CPACK_DEBIAN_VERSION="$(sed -nE 's/^set\(CPACK_DEBIAN_PACKAGE_VERSION "([^"]+)"\)$/\1/p' \
@@ -42,6 +45,14 @@ if [[ -z "${EFFECTIVE_VERSION}" || "${CPACK_VERSION}" != "${EFFECTIVE_VERSION}" 
        "cpack=${CPACK_VERSION:-missing}, debian=${CPACK_DEBIAN_VERSION:-missing}" >&2
   exit 1
 fi
+EXPECTED_FILE_NAME="${DISPLAY_NAME}_${EFFECTIVE_VERSION}_${DEBIAN_REVISION}_${DEBIAN_ARCHITECTURE}"
+if [[ -z "${DISPLAY_NAME}" || -z "${DEBIAN_REVISION}" || -z "${DEBIAN_ARCHITECTURE}" ||
+      -z "${CPACK_OUTPUT_PREFIX}" || "${CPACK_FILE_NAME}" != "${EXPECTED_FILE_NAME}" ||
+      "${CPACK_DEBIAN_RELEASE}" != "${DEBIAN_REVISION}" ]]; then
+  echo "Package filename or release mismatch: cpack=${CPACK_FILE_NAME:-missing}, " \
+       "expected=${EXPECTED_FILE_NAME}, release=${CPACK_DEBIAN_RELEASE:-missing}" >&2
+  exit 1
+fi
 
 PACKAGE_PATH="${CPACK_OUTPUT_PREFIX}/${CPACK_FILE_NAME}.deb"
 if [[ ! -f "${PACKAGE_PATH}" ]]; then
@@ -57,6 +68,12 @@ ACTUAL_DEBIAN_VERSION="$(dpkg-deb --field "${PACKAGE_PATH}" Version)"
 if [[ "${ACTUAL_DEBIAN_VERSION}" != "${EXPECTED_DEBIAN_VERSION}" ]]; then
   echo "Generated package has version ${ACTUAL_DEBIAN_VERSION}; " \
        "expected ${EXPECTED_DEBIAN_VERSION}" >&2
+  exit 1
+fi
+ACTUAL_DEBIAN_ARCHITECTURE="$(dpkg-deb --field "${PACKAGE_PATH}" Architecture)"
+if [[ "${ACTUAL_DEBIAN_ARCHITECTURE}" != "${DEBIAN_ARCHITECTURE}" ]]; then
+  echo "Generated package has architecture ${ACTUAL_DEBIAN_ARCHITECTURE}; " \
+       "expected ${DEBIAN_ARCHITECTURE}" >&2
   exit 1
 fi
 

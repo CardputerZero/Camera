@@ -394,6 +394,16 @@ int main() {
             quit_hold_armed = true;
             help_popup->show_exit_hint();
           } else if (is_gallery_screen) {
+            // Let an open photo-info popup consume the matching key-up Exit action.
+            const auto gallery_viewmodel =
+                std::dynamic_pointer_cast<viewmodel::GalleryViewModel>(current->viewmodel());
+            if (gallery_viewmodel && gallery_viewmodel->snapshot().info_visible) {
+              quit_hold_armed = false;
+              help_popup->hide_exit_hint();
+              help_popup->hide();
+              return;
+            }
+
             // Gallery is a child page: ESC/4 returns immediately on key-down.
             quit_hold_armed = false;
             help_popup->hide_exit_hint();

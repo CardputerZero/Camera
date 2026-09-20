@@ -208,7 +208,9 @@ void GalleryService::refresh() {
     }
   }
 
-  std::sort(items_.begin(), items_.end());
+  // Camera captures use the lexically sortable CAM_YYYYMMDD_HHMMSS.jpg
+  // format, so descending filename order presents the newest capture first.
+  std::sort(items_.begin(), items_.end(), std::greater<>());
   status_message_ = items_.empty() ? "No photos" : "Gallery ready";
 }
 
@@ -281,8 +283,14 @@ std::string GalleryService::pictures_dir_() {
 }
 
 bool GalleryService::is_image_file_(const std::string& path) {
+  const std::filesystem::path file_path(path);
+  const std::string filename = file_path.filename().string();
+  if (filename.size() < 4 || filename.rfind("CAM_", 0) != 0) {
+    return false;
+  }
+
   const std::string ext = lower_string(std::filesystem::path(path).extension().string());
-  return ext == ".jpg" || ext == ".jpeg" || ext == ".png";
+  return ext == ".jpg";
 }
 
 bool GalleryService::is_jpeg_file_(const std::string& path) {

@@ -20,6 +20,7 @@
 
 #include "services/camera_backend_utils.h"
 #include "services/camera_frame_pool.h"
+#include "services/jpeg_metadata.h"
 #include "services/preview_frame_limiter.h"
 
 namespace {
@@ -140,6 +141,14 @@ void expect_saved_jpeg_dimensions(int width, int height) {
       ("camera-resolution-" + std::to_string(width) + "x" + std::to_string(height) + ".jpg");
   assert(service::camera_backend::save_jpeg_rgb888(path.string(), resized, width, height, 90));
 
+  service::camera_backend::ExifMetadata metadata;
+  assert(service::camera_backend::read_jpeg_exif_metadata(path.string(), metadata));
+  assert(metadata.width == width);
+  assert(metadata.height == height);
+  assert(metadata.make == "M5Stack");
+  assert(metadata.model == "CardputerZero IMX219");
+  assert(metadata.software == CAMERA_APP_SOFTWARE_VERSION);
+
   FILE* input = std::fopen(path.c_str(), "rb");
   assert(input);
   jpeg_decompress_struct info{};
@@ -185,6 +194,37 @@ void test_yuv420_jpeg_honours_dimensions_and_stride() {
   assert(static_cast<int>(info.image_height) == height);
   jpeg_destroy_decompress(&info);
   std::fclose(input);
+  std::filesystem::remove(path);
+}
+
+void test_jpeg_metadata_round_trip() {
+  const std::vector<uint8_t> source = {255, 0, 0};
+  const auto path = std::filesystem::temp_directory_path() / "camera-exif-round-trip.jpg";
+
+  service::camera_backend::ExifMetadata expected =
+      service::camera_backend::make_default_exif_metadata(640, 480);
+  expected.date_time_original = "2026:09:20 12:34:56";
+  expected.exposure_time_us   = 12500;
+  expected.iso_speed          = 200;
+  expected.exposure_bias_value = -25;
+  expected.f_number_x100       = 200;
+  expected.focal_length_mm_x100 = 285;
+  expected.lens_make           = "M5Stack";
+  expected.lens_model          = "IMX219_PLCC";
+  expected.user_comment        = R"({"backend":"libcamera","estimated_iso":200})";
+  assert(service::camera_backend::save_jpeg_rgb888(
+      path.string(), source, 1, 1, 90, &expected));
+
+  service::camera_backend::ExifMetadata actual;
+  assert(service::camera_backend::read_jpeg_exif_metadata(path.string(), actual));
+  assert(actual.date_time_original == expected.date_time_original);
+  assert(actual.exposure_time_us == expected.exposure_time_us);
+  assert(actual.iso_speed == expected.iso_speed);
+  assert(actual.exposure_bias_value == expected.exposure_bias_value);
+  assert(actual.f_number_x100 == expected.f_number_x100);
+  assert(actual.focal_length_mm_x100 == expected.focal_length_mm_x100);
+  assert(actual.lens_model == expected.lens_model);
+  assert(actual.user_comment == expected.user_comment);
   std::filesystem::remove(path);
 }
 
@@ -248,6 +288,7 @@ int main() {
   test_rgb565_resize_preserves_full_frame_content();
   test_saved_jpeg_matches_setting_resolutions();
   test_yuv420_jpeg_honours_dimensions_and_stride();
+  test_jpeg_metadata_round_trip();
   test_still_stability_uses_colour_gains_when_awb_state_is_unavailable();
   test_still_stability_prefers_awb_state_and_has_a_bounded_fallback();
   return 0;

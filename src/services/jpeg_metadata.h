@@ -16,7 +16,7 @@ namespace service::camera_backend {
 struct ExifMetadata {
   std::string make{"M5Stack"};
   std::string model{"CardputerZero IMX219"};
-  std::string software{"Camera 1.0.0"};
+  std::string software;
   std::string date_time_original;
   std::string user_comment;
   int width{0};
@@ -35,5 +35,6 @@ struct ExifMetadata {
 
 ExifMetadata make_default_exif_metadata(int width, int height);
 std::vector<uint8_t> build_exif_app1(const ExifMetadata& metadata);
+bool read_jpeg_exif_metadata(const std::string& path, ExifMetadata& metadata);
 
 }  // namespace service::camera_backend

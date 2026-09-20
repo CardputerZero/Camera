@@ -43,13 +43,14 @@ jobs:
             latest_tag="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name 2>/dev/null || true)"
             latest="${latest_tag#v}"
             if [[ -z "${latest}" ]]; then
-              latest="$(sed -nE 's/^set\(CAMERA_APP_VERSION "([0-9]+\.[0-9]+\.[0-9]+)".*$/\1/p' CMakeLists.txt | head -n1)"
+              version="$(sed -nE 's/^set\(CAMERA_APP_VERSION "([0-9]+\.[0-9]+\.[0-9]+)".*$/\1/p' CMakeLists.txt | head -n1)"
+            else
+              if [[ ! "${latest}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+                echo "Unable to determine a semantic version from latest release: ${latest_tag}" >&2
+                exit 1
+              fi
+              version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.$((BASH_REMATCH[3] + 1))"
             fi
-            if [[ ! "${latest}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-              echo "Unable to determine a semantic version from latest release: ${latest_tag:-<none>}" >&2
-              exit 1
-            fi
-            version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.$((BASH_REMATCH[3] + 1))"
           fi
 
           if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -149,7 +150,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
-          package="dist/CameraApp_${VERSION}_m5stack1_arm64.deb"
+          package="dist/Camera_${VERSION}_m5stack1_arm64.deb"
           test -f "${package}"
           test "$(dpkg-deb --field "${package}" Architecture)" = "arm64"
           test "$(dpkg-deb --field "${package}" Version)" = "${VERSION}-m5stack1"

@@ -211,7 +211,10 @@ void setup_screen_manager(screen::ScreenManager& manager,
   manager.register_screen(app::screen_id(app::AppState::Splash), [services](lv_obj_t* parent) {
     auto viewmodel = std::make_shared<viewmodel::SplashViewModel>(services);
     auto view      = std::make_unique<view::SplashView>(parent);
-    view->bind(viewmodel->status_text_subject(), viewmodel->status_visible_subject());
+    view->bind(viewmodel->status_text_subject(),
+               viewmodel->status_visible_subject(),
+               viewmodel->backend_hint_text_subject(),
+               viewmodel->backend_hint_visible_subject());
     return std::make_shared<screen::Screen>(parent, std::move(view), viewmodel);
   });
 
@@ -377,12 +380,16 @@ int main() {
         const bool is_gallery_screen =
             current &&
             std::dynamic_pointer_cast<viewmodel::GalleryViewModel>(current->viewmodel()) != nullptr;
+        const bool is_splash_screen =
+            current &&
+            std::dynamic_pointer_cast<viewmodel::SplashViewModel>(current->viewmodel()) != nullptr;
+        const bool is_exit_hold_screen = is_camera_screen || is_splash_screen;
 
         if (action == app::AppAction::Quit) {
           const bool hold_was_armed = quit_hold_armed;
           quit_hold_armed = false;
           help_popup->hide_exit_hint();
-          if (is_camera_screen && hold_was_armed) {
+          if (is_exit_hold_screen && hold_was_armed) {
             LOG_INFO("Application quit requested by held ESC/4");
             running = false;
             request_program_exit();
@@ -390,7 +397,7 @@ int main() {
           return;
         }
         if (action == app::AppAction::BeginQuitHold) {
-          if (is_camera_screen) {
+          if (is_exit_hold_screen) {
             quit_hold_armed = true;
             help_popup->show_exit_hint();
           } else if (is_gallery_screen) {

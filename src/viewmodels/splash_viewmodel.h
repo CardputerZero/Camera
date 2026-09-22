@@ -29,8 +29,12 @@ class SplashViewModel : public BaseViewModel {
   std::string status_text() const;
   bool hint_visible() const { return hint_visible_; }
   bool should_show_status() const;
+  std::string backend_hint_text() const;
+  bool should_show_backend_hint() const;
   lv_subject_t* status_text_subject() { return status_text_subject_.subject(); }
   lv_subject_t* status_visible_subject() { return status_visible_subject_.subject(); }
+  lv_subject_t* backend_hint_text_subject() { return backend_hint_text_subject_.subject(); }
+  lv_subject_t* backend_hint_visible_subject() { return backend_hint_visible_subject_.subject(); }
 
   bool camera_ready_signal() const { return camera_ready_signal_; }
   bool consume_camera_ready_signal();
@@ -41,7 +45,9 @@ class SplashViewModel : public BaseViewModel {
   bool camera_ready_signal_{false};
   bool hint_visible_{false};
   ui::SubjectString<192> status_text_subject_{"Launching camera..."};
+  ui::SubjectString<64> backend_hint_text_subject_{" to switch to USB camera"};
   ui::SubjectBool status_visible_subject_{false};
+  ui::SubjectBool backend_hint_visible_subject_{false};
 };
 
 }  // namespace viewmodel

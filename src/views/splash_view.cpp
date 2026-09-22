@@ -85,11 +85,15 @@ void SplashView::build_() {
   build_container_();
   build_icon_();
   build_status_label_();
+  build_backend_hint_();
   build_exit_hint_();
   start_launch_animation_();
 }
 
-void SplashView::bind(lv_subject_t* status_text_subject, lv_subject_t* status_visible_subject) {
+void SplashView::bind(lv_subject_t* status_text_subject,
+                      lv_subject_t* status_visible_subject,
+                      lv_subject_t* backend_hint_text_subject,
+                      lv_subject_t* backend_hint_visible_subject) {
   if (status_label_ && status_text_subject) {
     lv_label_bind_text(status_label_, status_text_subject, nullptr);
   }
@@ -100,6 +104,15 @@ void SplashView::bind(lv_subject_t* status_text_subject, lv_subject_t* status_vi
 
   if (exit_hint_container_ && status_visible_subject) {
     lv_obj_bind_flag_if_eq(exit_hint_container_, status_visible_subject, LV_OBJ_FLAG_HIDDEN, 0);
+  }
+
+  if (backend_hint_suffix_label_ && backend_hint_text_subject) {
+    lv_label_bind_text(backend_hint_suffix_label_, backend_hint_text_subject, nullptr);
+  }
+
+  if (backend_hint_container_ && backend_hint_visible_subject) {
+    lv_obj_bind_flag_if_eq(
+        backend_hint_container_, backend_hint_visible_subject, LV_OBJ_FLAG_HIDDEN, 0);
   }
 }
 
@@ -112,6 +125,7 @@ void SplashView::build_container_() {
   lv_obj_set_style_radius(root_, 0, 0);
   lv_obj_set_style_pad_all(root_, 0, 0);
   lv_obj_clear_flag(root_, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_scrollbar_mode(root_, LV_SCROLLBAR_MODE_OFF);
 
   content_container_ = lv_obj_create(root_);
   lv_obj_set_size(content_container_, LV_PCT(100), LV_PCT(100));
@@ -123,6 +137,7 @@ void SplashView::build_container_() {
   lv_obj_set_style_pad_all(content_container_, 0, 0);
   lv_obj_set_style_clip_corner(content_container_, true, 0);
   lv_obj_clear_flag(content_container_, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_scrollbar_mode(content_container_, LV_SCROLLBAR_MODE_OFF);
   lv_obj_set_flex_flow(content_container_, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_flex_align(content_container_,
                         LV_FLEX_ALIGN_CENTER,
@@ -150,14 +165,50 @@ void SplashView::build_status_label_() {
   lv_obj_set_style_text_color(status_label_, lv_color_hex(color::LIGHT_ONSURFACE), 0);
 }
 
+/* Camera backend recovery hint */
+void SplashView::build_backend_hint_() {
+  backend_hint_container_ = lv_obj_create(content_container_);
+  lv_obj_set_width(backend_hint_container_, LV_PCT(88));
+  lv_obj_set_height(backend_hint_container_, LV_SIZE_CONTENT);
+  lv_obj_set_style_bg_opa(backend_hint_container_, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_opa(backend_hint_container_, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_pad_all(backend_hint_container_, 0, 0);
+  lv_obj_clear_flag(backend_hint_container_, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_scrollbar_mode(backend_hint_container_, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_set_flex_flow(backend_hint_container_, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(backend_hint_container_,
+                        LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER);
+
+  lv_obj_t* backend_hint_prefix_label = lv_label_create(backend_hint_container_);
+  lv_obj_set_style_text_font(backend_hint_prefix_label, Font::standard_regular(12), 0);
+  lv_obj_set_style_text_color(backend_hint_prefix_label, lv_color_hex(color::LIGHT_ONSURFACE), 0);
+  lv_label_set_text(backend_hint_prefix_label, "Press ");
+
+  lv_obj_t* backend_hint_key_label = lv_label_create(backend_hint_container_);
+  lv_obj_set_style_text_font(backend_hint_key_label, Font::standard_medium(12), 0);
+  lv_obj_set_style_text_color(backend_hint_key_label, lv_color_hex(color::LIGHT_PRIMARY), 0);
+  lv_label_set_text(backend_hint_key_label, "U");
+
+  backend_hint_suffix_label_ = lv_label_create(backend_hint_container_);
+  lv_obj_set_style_text_font(backend_hint_suffix_label_, Font::standard_regular(12), 0);
+  lv_obj_set_style_text_color(
+      backend_hint_suffix_label_, lv_color_hex(color::LIGHT_ONSURFACE), 0);
+  lv_label_set_text(backend_hint_suffix_label_, " to switch to USB camera");
+  lv_obj_add_flag(backend_hint_container_, LV_OBJ_FLAG_HIDDEN);
+}
+
 /* Exit hint */
 void SplashView::build_exit_hint_() {
   /* Exit hint container */
   exit_hint_container_ = lv_obj_create(content_container_);
-  lv_obj_set_size(exit_hint_container_, LV_PCT(100), 40);
+  lv_obj_set_size(exit_hint_container_, LV_PCT(100), 32);
   lv_obj_set_style_bg_opa(exit_hint_container_, LV_OPA_TRANSP, 0);
   lv_obj_set_style_border_opa(exit_hint_container_, LV_OPA_TRANSP, 0);
   lv_obj_set_style_pad_all(exit_hint_container_, 0, 0);
+  lv_obj_clear_flag(exit_hint_container_, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_scrollbar_mode(exit_hint_container_, LV_SCROLLBAR_MODE_OFF);
   lv_obj_set_flex_flow(exit_hint_container_, LV_FLEX_FLOW_ROW);
   lv_obj_set_flex_align(exit_hint_container_,
                         LV_FLEX_ALIGN_CENTER,
@@ -170,24 +221,11 @@ void SplashView::build_exit_hint_() {
   lv_obj_set_style_text_color(exit_pre_label, lv_color_hex(color::LIGHT_ONSURFACE), 0);
   lv_label_set_text(exit_pre_label, "Hold");
 
-  /* ESC (key/button) default style */
-  lv_obj_t* exit_hint_btn = lv_button_create(exit_hint_container_);
-  // lv_obj_set_style_bg_color(exit_hint_btn, lv_color_t value, 0);
-  lv_obj_set_style_width(exit_hint_btn, 62, 0);
-  lv_obj_set_style_height(exit_hint_btn, 36, 0);
-  lv_obj_set_style_bg_color(exit_hint_btn, lv_color_hex(color::LIGHT_PRIMARYCONTAINER), 0);
-  lv_obj_set_style_bg_opa(exit_hint_btn, LV_OPA_COVER, 0);
-  lv_obj_set_style_border_opa(exit_hint_btn, LV_OPA_TRANSP, 0);
-  lv_obj_set_style_radius(exit_hint_btn, 8, 0);
-
-  /* Text button pressed state */
-  lv_obj_set_style_bg_color(exit_hint_btn, lv_color_hex(color::LIGHT_PRIMARY), LV_STATE_PRESSED);
-  lv_obj_set_style_opa(exit_hint_btn, 12, LV_STATE_PRESSED);
-
-  /* Hint key label */
-  lv_obj_t* exit_hint_key_label = lv_label_create(exit_hint_btn);
+  /* Highlighted key label */
+  lv_obj_t* exit_hint_key_label = lv_label_create(exit_hint_container_);
   lv_obj_set_style_text_font(exit_hint_key_label, Font::standard_medium(13), 0);
-  lv_obj_set_style_text_color(exit_hint_key_label, lv_color_hex(color::LIGHT_ONPRIMARYCONTAINER), 0);
+  lv_obj_set_style_text_color(exit_hint_key_label, lv_color_hex(color::LIGHT_PRIMARY), 0);
+  lv_obj_set_style_pad_hor(exit_hint_key_label, 5, 0);
   lv_obj_set_align(exit_hint_key_label, LV_ALIGN_CENTER);
   lv_obj_set_style_translate_y(exit_hint_key_label, 0, 0);
   lv_label_set_text(exit_hint_key_label, "ESC / 4");

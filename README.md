@@ -107,7 +107,7 @@ also be run manually with an explicit `MAJOR.MINOR.PATCH` version.
 Default output:
 
 ```text
-dist/Camera_1.0.1_m5stack1_arm64.deb
+dist/Camera_1.0.2_m5stack1_arm64.deb
 ```
 
 Useful overrides:

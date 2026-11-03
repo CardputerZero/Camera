@@ -110,7 +110,9 @@ set(APP_DEBIAN_PACKAGE_DEPENDS
     libjpeg62-turbo
     zlib1g
     libfmt10
-    "libcamera0.7 | libcamera0.6 | libcamera0.5 | libcamera0.4 | libcamera0.3 | libcamera0.2 | libcamera0"
+    # libcamera 0.7.2 rebuilt the public API on std::span without bumping the
+    # SONAME
+    "libcamera0.7 (>= 0.7.2)"
     libcamera-ipa
     libpulse0
     libcjson1

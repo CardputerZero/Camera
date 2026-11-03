@@ -6,10 +6,10 @@
 
 cmake_minimum_required(VERSION 3.23)
 
-set(CAMERA_APP_VERSION "1.0.2" CACHE STRING "CameraApp semantic version")
+set(CAMERA_APP_VERSION "1.0.3" CACHE STRING "CameraApp semantic version")
 project(camera_app VERSION "${CAMERA_APP_VERSION}" LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
@@ -316,6 +316,47 @@ else()
     if(NOT LIBCAMERA_INCLUDE_DIR OR NOT LIBCAMERA_LIBRARY OR NOT LIBCAMERA_BASE_LIBRARY)
         message(FATAL_ERROR "Missing required libcamera headers/libraries in BSP sysroot: ${CM0_SYSROOT}")
     endif()
+
+    # libcamera 0.7.2 switched libcamera::Span to std::span without bumping the SONAME.
+    file(STRINGS "${LIBCAMERA_INCLUDE_DIR}/libcamera/version.h" _libcamera_version_defines
+        REGEX "^#define LIBCAMERA_VERSION_(MAJOR|MINOR|PATCH)")
+    foreach(_libcamera_define IN LISTS _libcamera_version_defines)
+        if(_libcamera_define MATCHES "MAJOR[ \t]+([0-9]+)")
+            set(_libcamera_version_major "${CMAKE_MATCH_1}")
+        elseif(_libcamera_define MATCHES "MINOR[ \t]+([0-9]+)")
+            set(_libcamera_version_minor "${CMAKE_MATCH_1}")
+        elseif(_libcamera_define MATCHES "PATCH[ \t]+([0-9]+)")
+            set(_libcamera_version_patch "${CMAKE_MATCH_1}")
+        endif()
+    endforeach()
+    if("${_libcamera_version_major}" STREQUAL "")
+        message(FATAL_ERROR "Cannot read the libcamera version from ${LIBCAMERA_INCLUDE_DIR}/libcamera/version.h")
+    endif()
+    math(EXPR _libcamera_version_number
+        "${_libcamera_version_major} * 10000 + ${_libcamera_version_minor} * 100 + ${_libcamera_version_patch}")
+    if(_libcamera_version_number LESS 702)
+        message(FATAL_ERROR
+            "Found libcamera ${_libcamera_version_major}.${_libcamera_version_minor}.${_libcamera_version_patch} headers in "
+            "${LIBCAMERA_INCLUDE_DIR}/libcamera, but the device runtime exports the 0.7.2 std::span ABI. "
+            "Install the 0.7.2 headers into the flat include layout (${CM0_SYSROOT}/usr/include/libcamera/*.h).")
+    endif()
+
+    # Also verify the link-time library comes from the same generation. A stale
+    # libcamera.so symlink silently overrides freshly installed 0.7.2 headers.
+    get_filename_component(_libcamera_library_real "${LIBCAMERA_LIBRARY}" REALPATH)
+    get_filename_component(_libcamera_library_dir "${_libcamera_library_real}" DIRECTORY)
+    get_filename_component(_libcamera_library_name "${_libcamera_library_real}" NAME)
+    if(_libcamera_library_name MATCHES "^libcamera\\.so\\.[0-9]+\\.[0-9]+\\.[0-9]+$" AND
+       NOT _libcamera_library_name STREQUAL
+           "libcamera.so.${_libcamera_version_major}.${_libcamera_version_minor}.${_libcamera_version_patch}")
+        message(FATAL_ERROR
+            "libcamera headers are ${_libcamera_version_major}.${_libcamera_version_minor}.${_libcamera_version_patch} "
+            "but ${LIBCAMERA_LIBRARY} resolves to ${_libcamera_library_name}. "
+            "Reinstall the matching libcamera runtime into ${_libcamera_library_dir} and refresh the "
+            "libcamera.so / libcamera.so.${_libcamera_version_major}.${_libcamera_version_minor} symlinks.")
+    endif()
+    message(STATUS "Using libcamera ${_libcamera_version_major}.${_libcamera_version_minor}.${_libcamera_version_patch}: ${_libcamera_library_real}")
+
     camera_app_add_imported_library(CM0::Libcamera "${LIBCAMERA_LIBRARY}" "${LIBCAMERA_INCLUDE_DIR}")
     camera_app_add_imported_library(CM0::LibcameraBase "${LIBCAMERA_BASE_LIBRARY}" "${LIBCAMERA_INCLUDE_DIR}")
 
@@ -452,7 +493,9 @@ target_include_directories(${PROJECT_NAME}_services PUBLIC ${APP_COMMON_INCLUDE_
 target_compile_definitions(${PROJECT_NAME}_services PUBLIC
     USE_DESKTOP=$<BOOL:${USE_DESKTOP}>
     APP_MINIAUDIO_HEADER="${MINIAUDIO_INCLUDE_DIR}/miniaudio.h"
-    CAMERA_APP_SOFTWARE_VERSION="Camera ${PROJECT_VERSION}"
+    # Written to the EXIF Software tag (0x0131); keep it in sync with the
+    # release version from CMakeLists.txt / package version.
+    CAMERA_APP_SOFTWARE_VERSION="Camera ${CAMERA_APP_VERSION}"
 )
 target_link_libraries(${PROJECT_NAME}_services PUBLIC ${PROJECT_NAME}_utils ${APP_DEP_LIBS})
 

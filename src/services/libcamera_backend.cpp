@@ -31,6 +31,11 @@
 #include "utils/logger.h"
 
 #if !USE_DESKTOP
+#include <libcamera/version.h>
+#if (LIBCAMERA_VERSION_MAJOR * 10000 + LIBCAMERA_VERSION_MINOR * 100 + LIBCAMERA_VERSION_PATCH) < 702
+#error "CameraApp requires libcamera >= 0.7.2: 0.7.2 changed Camera::generateConfiguration() from libcamera::Span to std::span without a SONAME bump, so older headers produce a binary that fails at startup."
+#endif
+
 #include <fcntl.h>
 #include <libcamera/base/shared_fd.h>
 #include <libcamera/base/unique_fd.h>
@@ -1576,8 +1581,12 @@ struct LibcameraBackend::Impl {
     append_json_value(json, "max_latency", max_latency);
     append_json_value(json, "noise_reduction_mode", noise_reduction_mode);
     append_json_value(json, "color_correction_aberration_mode", color_correction_aberration_mode);
-    if (auto pixel_array_size = camera->properties().get(libcamera::properties::PixelArraySize)) {
-      append_json_size(json, "pixel_array_size", *pixel_array_size);
+    /* libcamera 0.7 exposes PixelArrayArea (Rectangle) instead of the removed
+     * PixelArraySize (Size); keep the legacy JSON key for tooling. */
+    if (auto pixel_array_area = camera->properties().get(libcamera::properties::PixelArrayArea)) {
+      append_json_rectangle(json, "pixel_array_area", *pixel_array_area);
+      append_json_size(json, "pixel_array_size",
+                       libcamera::Size{pixel_array_area->width, pixel_array_area->height});
     }
     if (auto unit_cell_size = camera->properties().get(libcamera::properties::UnitCellSize)) {
       append_json_size(json, "unit_cell_size", *unit_cell_size);
@@ -1599,9 +1608,9 @@ struct LibcameraBackend::Impl {
             camera->properties().get(libcamera::properties::PixelArrayActiveAreas)) {
       append_json_rectangles(json, "pixel_array_active_areas", *active_areas);
     }
-    if (auto optical_black =
-            camera->properties().get(libcamera::properties::PixelArrayOpticalBlackRectangles)) {
-      append_json_rectangles(json, "pixel_array_optical_black_rectangles", *optical_black);
+    if (auto readable_area =
+            camera->properties().get(libcamera::properties::PixelArrayReadableArea)) {
+      append_json_rectangle(json, "pixel_array_readable_area", *readable_area);
     }
     if (scaler_crop) {
       append_json_rectangle(json, "scaler_crop", *scaler_crop);

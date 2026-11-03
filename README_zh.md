@@ -5,12 +5,7 @@ CameraApp 是一个基于 LVGL 9 / CMake 的 embedded Linux 相机应用，主�
 ## 版本 1.0.3
 
 > [!WARNING]
-> **CameraApp 1.0.3 需要 libcamera 0.7.2 及以上版本，不兼容 libcamera 0.7.0 / 0.7.1 运行时。**
->
-> libcamera 0.7.2 将 `Camera::generateConfiguration()` 的参数从 `libcamera::Span` 改成了
-> `std::span`，却**没有提升 SONAME**（仍是 `libcamera.so.0.7`）。因此用旧版 0.7.x 头文件编译出的
-> 程序可以正常链接，但在 0.7.2 设备上启动即报 `undefined symbol` 错误
-> 请务必使用 0.7.2 的头文件和库重新编译，不要沿用本版本之前构建的二进制。
+> **CameraApp 1.0.3 需要 libcamera 0.7.2 及以上版本
 
 
 ## 目录约定

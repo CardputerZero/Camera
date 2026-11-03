@@ -5,15 +5,7 @@ CameraApp is an embedded Linux camera application built with LVGL 9 and CMake. I
 ## Version 1.0.3
 
 > [!WARNING]
-> **CameraApp 1.0.3 requires libcamera 0.7.2 or newer and is not compatible with
-> libcamera 0.7.0 / 0.7.1 runtimes.**
->
-> libcamera 0.7.2 changed `Camera::generateConfiguration()` from `libcamera::Span` to
-> `std::span` **without bumping the SONAME** (`libcamera.so.0.7`). A binary built against
-> older 0.7.x headers therefore links successfully but aborts at startup on a 0.7.2
-> system with `undefined symbol`.
-> Rebuild the application against the 0.7.2 headers and libraries; do not reuse binaries
-> from before this release.
+> **CameraApp 1.0.3 requires libcamera 0.7.2 or newer.
 
 ## Directory Layout
 

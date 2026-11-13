@@ -66,7 +66,7 @@ STATIC_LIB = [
     os.path.join(libv4l_dev_root, 'usr', 'lib', 'aarch64-linux-gnu', 'libv4lconvert.a'),
 ]
 DYNAMIC_LIB = []
-# libcamera 0.7.2 exposes std::span in its public headers, so C++20 is required.
+# libcamera 0.8 exposes std::span in its public headers, so C++20 is required.
 DEFINITIONS = ['-DCAMERA_APP_SCONS_BUILD', '-std=c++20', '-O2']
 DEFINITIONS_PRIVATE = []
 LDFLAGS = ['-Wl,--allow-shlib-undefined']

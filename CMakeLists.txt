@@ -6,7 +6,7 @@
 
 cmake_minimum_required(VERSION 3.23)
 
-set(CAMERA_APP_VERSION "1.0.3" CACHE STRING "CameraApp semantic version")
+set(CAMERA_APP_VERSION "1.0.4" CACHE STRING "CameraApp semantic version")
 project(camera_app VERSION "${CAMERA_APP_VERSION}" LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -317,7 +317,7 @@ else()
         message(FATAL_ERROR "Missing required libcamera headers/libraries in BSP sysroot: ${CM0_SYSROOT}")
     endif()
 
-    # libcamera 0.7.2 switched libcamera::Span to std::span without bumping the SONAME.
+    # libcamera 0.8 renamed the public control enums and bumped the SONAME to
     file(STRINGS "${LIBCAMERA_INCLUDE_DIR}/libcamera/version.h" _libcamera_version_defines
         REGEX "^#define LIBCAMERA_VERSION_(MAJOR|MINOR|PATCH)")
     foreach(_libcamera_define IN LISTS _libcamera_version_defines)
@@ -334,15 +334,15 @@ else()
     endif()
     math(EXPR _libcamera_version_number
         "${_libcamera_version_major} * 10000 + ${_libcamera_version_minor} * 100 + ${_libcamera_version_patch}")
-    if(_libcamera_version_number LESS 702)
+    if(_libcamera_version_number LESS 800)
         message(FATAL_ERROR
             "Found libcamera ${_libcamera_version_major}.${_libcamera_version_minor}.${_libcamera_version_patch} headers in "
-            "${LIBCAMERA_INCLUDE_DIR}/libcamera, but the device runtime exports the 0.7.2 std::span ABI. "
-            "Install the 0.7.2 headers into the flat include layout (${CM0_SYSROOT}/usr/include/libcamera/*.h).")
+            "${LIBCAMERA_INCLUDE_DIR}/libcamera, but CameraApp requires libcamera 0.8.0 or newer. "
+            "Install the 0.8 headers into the flat include layout (${CM0_SYSROOT}/usr/include/libcamera/*.h).")
     endif()
 
     # Also verify the link-time library comes from the same generation. A stale
-    # libcamera.so symlink silently overrides freshly installed 0.7.2 headers.
+    # libcamera.so symlink silently overrides freshly installed 0.8 headers.
     get_filename_component(_libcamera_library_real "${LIBCAMERA_LIBRARY}" REALPATH)
     get_filename_component(_libcamera_library_dir "${_libcamera_library_real}" DIRECTORY)
     get_filename_component(_libcamera_library_name "${_libcamera_library_real}" NAME)

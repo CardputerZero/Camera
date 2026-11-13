@@ -2,10 +2,10 @@
 
 CameraApp 是一个基于 LVGL 9 / CMake 的 embedded Linux 相机应用，主要面向 M5CardputerZero / CM0 的 APPLaunch 集成使用。应用本身会安装为独立程序，同时提供 APPLaunch 的 `.desktop` 入口、图标、字体和音效资源。
 
-## 版本 1.0.3
+## 版本 1.0.4
 
 > [!WARNING]
-> **CameraApp 1.0.3 需要 libcamera 0.7.2 及以上版本
+> **CameraApp 1.0.4 需要 libcamera 0.8.0 及以上版本（Raspberry Pi 0.8.0+rpt20261104-1）。
 
 
 ## 目录约定
@@ -143,7 +143,7 @@ cmake --preset cp0-cross -DAPP_USE_DRM=ON
 可以通过 `CAMERA_APP_VERSION` 覆盖包版本，无需修改 `CMakeLists.txt`：
 
 ```bash
-./package_deb.sh -DCAMERA_APP_VERSION=1.0.3
+./package_deb.sh -DCAMERA_APP_VERSION=1.0.4
 ```
 
 推送到 `main` 后，`.github/workflows/release.yml` 会读取最新 GitHub Release，将补丁版本号
@@ -160,7 +160,7 @@ cd /path/to/debian_workspace/projects/CameraApp
 默认输出：
 
 ```text
-dist/Camera_1.0.3_m5stack1_arm64.deb
+dist/Camera_1.0.4_m5stack1_arm64.deb
 ```
 
 可选参数：
@@ -173,7 +173,7 @@ dist/Camera_1.0.3_m5stack1_arm64.deb
 检查包内容：
 
 ```bash
-dpkg-deb -c dist/Camera_1.0.3_m5stack1_arm64.deb
+dpkg-deb -c dist/Camera_1.0.4_m5stack1_arm64.deb
 ```
 
 至少应包含这些路径：
@@ -188,17 +188,16 @@ dpkg-deb -c dist/Camera_1.0.3_m5stack1_arm64.deb
 /usr/share/CameraApp/assets/audio/...
 ```
 
-在目标板安装：
 
 ```bash
-sudo apt install ./dist/Camera_1.0.3_m5stack1_arm64.deb
+sudo apt install ./dist/Camera_1.0.4_m5stack1_arm64.deb
 ```
 
 或者复制到目标板后安装：
 
 ```bash
-scp dist/Camera_1.0.3_m5stack1_arm64.deb pi@pi:~/
-ssh pi@pi 'sudo apt install ./Camera_1.0.3_m5stack1_arm64.deb'
+scp dist/Camera_1.0.4_m5stack1_arm64.deb pi@pi:~/
+ssh pi@pi 'sudo apt install ./Camera_1.0.4_m5stack1_arm64.deb'
 ```
 
 ## 安装后的资源路径

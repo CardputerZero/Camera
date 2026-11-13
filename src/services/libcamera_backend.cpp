@@ -31,11 +31,6 @@
 #include "utils/logger.h"
 
 #if !USE_DESKTOP
-#include <libcamera/version.h>
-#if (LIBCAMERA_VERSION_MAJOR * 10000 + LIBCAMERA_VERSION_MINOR * 100 + LIBCAMERA_VERSION_PATCH) < 702
-#error "CameraApp requires libcamera >= 0.7.2: 0.7.2 changed Camera::generateConfiguration() from libcamera::Span to std::span without a SONAME bump, so older headers produce a binary that fails at startup."
-#endif
-
 #include <fcntl.h>
 #include <libcamera/base/shared_fd.h>
 #include <libcamera/base/unique_fd.h>
@@ -303,11 +298,11 @@ void append_json_rectangles(std::ostringstream& json, const char* key, const Spa
 
 uint16_t exif_metering_mode(int32_t mode) {
   switch (mode) {
-    case libcamera::controls::MeteringCentreWeighted:
+    case libcamera::controls::AeMeteringModeCentreWeighted:
       return 2;
-    case libcamera::controls::MeteringSpot:
+    case libcamera::controls::AeMeteringModeSpot:
       return 3;
-    case libcamera::controls::MeteringMatrix:
+    case libcamera::controls::AeMeteringModeMatrix:
       return 5;
     default:
       return 255;
@@ -316,16 +311,16 @@ uint16_t exif_metering_mode(int32_t mode) {
 
 uint16_t exif_light_source(int32_t awb_mode) {
   switch (awb_mode) {
-    case libcamera::controls::AwbDaylight:
+    case libcamera::controls::AwbModeDaylight:
       return 1;
-    case libcamera::controls::AwbFluorescent:
+    case libcamera::controls::AwbModeFluorescent:
       return 2;
-    case libcamera::controls::AwbIncandescent:
-    case libcamera::controls::AwbTungsten:
+    case libcamera::controls::AwbModeIncandescent:
+    case libcamera::controls::AwbModeTungsten:
       return 3;
-    case libcamera::controls::AwbCloudy:
+    case libcamera::controls::AwbModeCloudy:
       return 10;
-    case libcamera::controls::AwbAuto:
+    case libcamera::controls::AwbModeAuto:
       return 0;
     default:
       return 255;
@@ -1326,8 +1321,9 @@ struct LibcameraBackend::Impl {
     controls.set(libcamera::controls::ScalerCrop, full_scaler_crop());
     controls.set(libcamera::controls::FrameDurationLimits,
                  {kStillMinFrameDurationUs, kStillMaxFrameDurationUs});
-    controls.set(libcamera::controls::AeMeteringMode, libcamera::controls::MeteringCentreWeighted);
-    controls.set(libcamera::controls::AwbMode, libcamera::controls::AwbAuto);
+    controls.set(libcamera::controls::AeMeteringMode,
+                 libcamera::controls::AeMeteringModeCentreWeighted);
+    controls.set(libcamera::controls::AwbMode, libcamera::controls::AwbModeAuto);
     controls.set(libcamera::controls::Brightness, 0.0f);
     controls.set(libcamera::controls::Contrast, 1.0f);
     controls.set(libcamera::controls::Saturation, 1.0f);
@@ -1652,8 +1648,8 @@ struct LibcameraBackend::Impl {
     sample.ae_state_available  = ae_state.has_value();
     sample.ae_converged        = decision.ae_state == libcamera::controls::AeStateConverged;
     sample.awb_state_available = awb_state.has_value();
-    sample.awb_converged       = decision.awb_state == libcamera::controls::draft::AwbConverged ||
-                                 decision.awb_state == libcamera::controls::draft::AwbLocked;
+    sample.awb_converged       = decision.awb_state == libcamera::controls::draft::AwbStateConverged ||
+                                 decision.awb_state == libcamera::controls::draft::AwbStateLocked;
     if (colour_gains) {
       decision.red_gain             = (*colour_gains)[0];
       decision.blue_gain            = (*colour_gains)[1];

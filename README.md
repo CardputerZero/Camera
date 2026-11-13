@@ -2,10 +2,10 @@
 
 CameraApp is an embedded Linux camera application built with LVGL 9 and CMake. It targets M5CardputerZero / CM0 APPLaunch integration and installs a standalone executable, launcher entry, icon, fonts, and audio assets.
 
-## Version 1.0.3
+## Version 1.0.4
 
 > [!WARNING]
-> **CameraApp 1.0.3 requires libcamera 0.7.2 or newer.
+> **CameraApp 1.0.4 requires libcamera 0.8.0 or newer (Raspberry Pi 0.8.0+rpt20261104-1).
 
 ## Directory Layout
 
@@ -98,7 +98,7 @@ cmake --preset cp0-cross -DAPP_USE_DRM=ON
 `CAMERA_APP_VERSION` can override the package version without editing `CMakeLists.txt`:
 
 ```bash
-./package_deb.sh -DCAMERA_APP_VERSION=1.0.3
+./package_deb.sh -DCAMERA_APP_VERSION=1.0.4
 ```
 
 Pushes to `main` run `.github/workflows/release.yml`, increment the patch component of the latest
@@ -112,7 +112,7 @@ also be run manually with an explicit `MAJOR.MINOR.PATCH` version.
 Default output:
 
 ```text
-dist/Camera_1.0.3_m5stack1_arm64.deb
+dist/Camera_1.0.4_m5stack1_arm64.deb
 ```
 
 Useful overrides:

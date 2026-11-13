@@ -110,9 +110,8 @@ set(APP_DEBIAN_PACKAGE_DEPENDS
     libjpeg62-turbo
     zlib1g
     libfmt10
-    # libcamera 0.7.2 rebuilt the public API on std::span without bumping the
-    # SONAME
-    "libcamera0.7 (>= 0.7.2)"
+    # libcamera 0.8 renamed the public control enums and changed the SONAME.
+    libcamera0.8
     libcamera-ipa
     libpulse0
     libcjson1
